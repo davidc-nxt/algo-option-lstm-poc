@@ -90,6 +90,67 @@
             <canvas id="marketChart"></canvas>
           </div>
         </div>
+        <details class="edu-section card glass">
+          <summary class="edu-toggle">📚 Options Basics — What Are Stock Options?</summary>
+          <div class="edu-content">
+            <div class="edu-grid">
+              <div class="edu-block">
+                <h4>📝 What is an Option?</h4>
+                <p>An option gives you the <strong>right (not obligation)</strong> to buy or sell a stock at a set price
+                  (the <em>strike price</em>) before a specific date (the <em>expiry</em>).</p>
+                <div class="edu-formula">Premium = Intrinsic Value + Time Value</div>
+              </div>
+              <div class="edu-block">
+                <h4>📞 Call vs 📉 Put</h4>
+                <p><strong>Call Option</strong> — Right to <em>buy</em> the stock. You profit if the stock goes up.</p>
+                <p><strong>Put Option</strong> — Right to <em>sell</em> the stock. You profit if the stock goes down.
+                </p>
+              </div>
+              <div class="edu-block">
+                <h4>💰 Key Terms</h4>
+                <table class="edu-table">
+                  <tr>
+                    <td><strong>Strike Price (K)</strong></td>
+                    <td>The price at which you can buy/sell the stock</td>
+                  </tr>
+                  <tr>
+                    <td><strong>Expiry Date</strong></td>
+                    <td>The deadline for exercising the option</td>
+                  </tr>
+                  <tr>
+                    <td><strong>Premium</strong></td>
+                    <td>The price you pay to buy the option</td>
+                  </tr>
+                  <tr>
+                    <td><strong>Open Interest (OI)</strong></td>
+                    <td>Total number of outstanding contracts</td>
+                  </tr>
+                  <tr>
+                    <td><strong>Settlement Price</strong></td>
+                    <td>Official closing price from the exchange (SEOCH)</td>
+                  </tr>
+                </table>
+              </div>
+              <div class="edu-block">
+                <h4>🎯 Moneyness</h4>
+                <table class="edu-table">
+                  <tr>
+                    <td><strong>In The Money (ITM)</strong></td>
+                    <td>Call: S &gt; K · Put: S &lt; K — has intrinsic value</td>
+                  </tr>
+                  <tr>
+                    <td><strong>At The Money (ATM)</strong></td>
+                    <td>S ≈ K — strike near current price</td>
+                  </tr>
+                  <tr>
+                    <td><strong>Out of The Money (OTM)</strong></td>
+                    <td>Call: S &lt; K · Put: S &gt; K — no intrinsic value</td>
+                  </tr>
+                </table>
+              </div>
+            </div>
+          </div>
+        </details>
       </section>
 
       <!-- Options Chain Tab -->
@@ -108,6 +169,54 @@
             <p class="placeholder-text">Select a stock and expiry to view the options chain</p>
           </div>
         </div>
+        <details class="edu-section card glass">
+          <summary class="edu-toggle">📚 Reading the Options Chain</summary>
+          <div class="edu-content">
+            <div class="edu-grid">
+              <div class="edu-block">
+                <h4>📖 How to Read the Table</h4>
+                <p>The options chain shows <strong>calls on the left</strong> and <strong>puts on the right</strong>,
+                  with the <strong>strike price in the center</strong>.</p>
+                <table class="edu-table">
+                  <tr>
+                    <td><strong>Settle</strong></td>
+                    <td>Official settlement (closing) price from SEOCH</td>
+                  </tr>
+                  <tr>
+                    <td><strong>Chg</strong></td>
+                    <td>Price change from previous day's settlement</td>
+                  </tr>
+                  <tr>
+                    <td><strong>IV</strong></td>
+                    <td>Implied Volatility — market's expected future volatility (higher = more expensive)</td>
+                  </tr>
+                  <tr>
+                    <td><strong>Volume</strong></td>
+                    <td>Number of contracts traded today</td>
+                  </tr>
+                  <tr>
+                    <td><strong>OI</strong></td>
+                    <td>Open Interest — total outstanding contracts (higher = more liquid)</td>
+                  </tr>
+                </table>
+              </div>
+              <div class="edu-block">
+                <h4>📐 Implied Volatility (IV)</h4>
+                <p>IV represents the market's expectation of future price movement. It is <em>implied</em> from the
+                  option price using the Black-Scholes model:</p>
+                <div class="edu-formula">Given the market price, solve for σ in:<br>C = S·N(d₁) − K·e⁻ʳᵀ·N(d₂)</div>
+                <p>Higher IV → more expensive options (more uncertainty)</p>
+              </div>
+              <div class="edu-block">
+                <h4>💡 Tips for Beginners</h4>
+                <p>• <strong>High OI + High Volume</strong> = liquid contract (easier to trade)</p>
+                <p>• <strong>ATM options</strong> have the most time value</p>
+                <p>• <strong>Deep ITM</strong> options behave like the stock itself</p>
+                <p>• <strong>OTM options</strong> are cheaper but expire worthless more often</p>
+              </div>
+            </div>
+          </div>
+        </details>
       </section>
 
       <!-- Strategy Builder Tab -->
@@ -151,6 +260,128 @@
           <h3>Greeks Profile</h3>
           <div id="greeksDisplay" class="greeks-grid"></div>
         </div>
+
+        <details class="edu-section card glass">
+          <summary class="edu-toggle">📚 Strategy Formulas & Payoff Equations</summary>
+          <div class="edu-content">
+            <div class="edu-grid">
+              <div class="edu-block">
+                <h4>🔵 Covered Call</h4>
+                <p><strong>Setup:</strong> Buy stock + Sell call at strike K</p>
+                <div class="edu-formula">Payoff = (S − S₀) + min(K − S, 0) + C<br>Max Profit = (K − S₀) + C<br>Max Loss
+                  = S₀ − C (if stock → 0)<br>Breakeven = S₀ − C</div>
+                <p class="edu-hint">📌 Best when: Mildly bullish, want income from the premium</p>
+              </div>
+              <div class="edu-block">
+                <h4>🟢 Protective Put</h4>
+                <p><strong>Setup:</strong> Buy stock + Buy put at strike K</p>
+                <div class="edu-formula">Payoff = (S − S₀) + max(K − S, 0) − P<br>Max Profit = Unlimited (stock
+                  upside)<br>Max Loss = S₀ − K + P<br>Breakeven = S₀ + P</div>
+                <p class="edu-hint">📌 Best when: Bullish but want insurance against a crash</p>
+              </div>
+              <div class="edu-block">
+                <h4>🟡 Collar</h4>
+                <p><strong>Setup:</strong> Buy stock + Buy put (K₁) + Sell call (K₂)</p>
+                <div class="edu-formula">Payoff = (S − S₀) + max(K₁ − S, 0) − min(S − K₂, 0) − P + C<br>Max Profit = K₂
+                  − S₀ − P + C<br>Max Loss = S₀ − K₁ + P − C<br>Breakeven = S₀ + P − C</div>
+                <p class="edu-hint">📌 Best when: Want to cap both risk and reward at low cost</p>
+              </div>
+              <div class="edu-block">
+                <h4>🔼 Bull Call Spread</h4>
+                <p><strong>Setup:</strong> Buy call (K₁) + Sell call (K₂), where K₁ &lt; K₂</p>
+                <div class="edu-formula">Payoff = max(S − K₁, 0) − max(S − K₂, 0) − Net Debit<br>Max Profit = (K₂ − K₁)
+                  − Net Debit<br>Max Loss = Net Debit<br>Breakeven = K₁ + Net Debit</div>
+                <p class="edu-hint">📌 Best when: Moderately bullish with defined risk</p>
+              </div>
+              <div class="edu-block">
+                <h4>🔽 Bear Put Spread</h4>
+                <p><strong>Setup:</strong> Buy put (K₂) + Sell put (K₁), where K₁ &lt; K₂</p>
+                <div class="edu-formula">Payoff = max(K₂ − S, 0) − max(K₁ − S, 0) − Net Debit<br>Max Profit = (K₂ − K₁)
+                  − Net Debit<br>Max Loss = Net Debit<br>Breakeven = K₂ − Net Debit</div>
+                <p class="edu-hint">📌 Best when: Moderately bearish with defined risk</p>
+              </div>
+              <div class="edu-block">
+                <h4>⬆️⬇️ Long Straddle</h4>
+                <p><strong>Setup:</strong> Buy call (K) + Buy put (K) at same strike</p>
+                <div class="edu-formula">Payoff = max(S − K, 0) + max(K − S, 0) − C − P<br>Max Profit = Unlimited<br>Max
+                  Loss = C + P (total premium paid)<br>Breakeven = K ± (C + P)</div>
+                <p class="edu-hint">📌 Best when: Expecting a BIG move but unsure of direction</p>
+              </div>
+              <div class="edu-block">
+                <h4>↕️ Long Strangle</h4>
+                <p><strong>Setup:</strong> Buy OTM put (K₁) + Buy OTM call (K₂), K₁ &lt; K₂</p>
+                <div class="edu-formula">Payoff = max(K₁ − S, 0) + max(S − K₂, 0) − P − C<br>Max Profit =
+                  Unlimited<br>Max Loss = P + C (total premium paid)<br>Upper BE = K₂ + (P + C)<br>Lower BE = K₁ − (P +
+                  C)</div>
+                <p class="edu-hint">📌 Best when: Expecting a BIG move, cheaper than straddle</p>
+              </div>
+            </div>
+          </div>
+        </details>
+
+        <details class="edu-section card glass">
+          <summary class="edu-toggle">📚 The Greeks — Risk Sensitivities</summary>
+          <div class="edu-content">
+            <div class="edu-grid">
+              <div class="edu-block">
+                <h4>Δ Delta</h4>
+                <p>How much the option price changes per $1 move in the stock.</p>
+                <div class="edu-formula">Call Δ = N(d₁) ∈ [0, 1]<br>Put Δ = N(d₁) − 1 ∈ [−1, 0]</div>
+                <p>Δ = 0.50 means: stock up $1 → option up $0.50</p>
+              </div>
+              <div class="edu-block">
+                <h4>Γ Gamma</h4>
+                <p>How fast Delta changes as the stock moves. Highest for ATM options.</p>
+                <div class="edu-formula">Γ = N'(d₁) / (S · σ · √T)</div>
+                <p>High Gamma = Delta can swing rapidly with small stock moves</p>
+              </div>
+              <div class="edu-block">
+                <h4>Θ Theta</h4>
+                <p>How much value the option loses per day due to time decay.</p>
+                <div class="edu-formula">Θ = −[S · N'(d₁) · σ] / (2√T) − r · K · e⁻ʳᵀ · N(±d₂)</div>
+                <p>Theta is almost always negative — options lose value over time</p>
+              </div>
+              <div class="edu-block">
+                <h4>ν Vega</h4>
+                <p>How much the option price changes per 1% change in implied volatility.</p>
+                <div class="edu-formula">ν = S · N'(d₁) · √T</div>
+                <p>Higher Vega = more sensitive to volatility swings</p>
+              </div>
+              <div class="edu-block">
+                <h4>📐 Black-Scholes Model</h4>
+                <p>The foundational formula for option pricing (European options):</p>
+                <div class="edu-formula">C = S · N(d₁) − K · e⁻ʳᵀ · N(d₂)<br>P = K · e⁻ʳᵀ · N(−d₂) − S ·
+                  N(−d₁)<br><br>where:<br>d₁ = [ln(S/K) + (r + σ²/2)T] / (σ√T)<br>d₂ = d₁ − σ√T</div>
+                <table class="edu-table">
+                  <tr>
+                    <td><strong>S</strong></td>
+                    <td>Current stock price</td>
+                  </tr>
+                  <tr>
+                    <td><strong>K</strong></td>
+                    <td>Strike price</td>
+                  </tr>
+                  <tr>
+                    <td><strong>T</strong></td>
+                    <td>Time to expiry (in years)</td>
+                  </tr>
+                  <tr>
+                    <td><strong>r</strong></td>
+                    <td>Risk-free interest rate</td>
+                  </tr>
+                  <tr>
+                    <td><strong>σ</strong></td>
+                    <td>Volatility (standard deviation of returns)</td>
+                  </tr>
+                  <tr>
+                    <td><strong>N(x)</strong></td>
+                    <td>Cumulative standard normal distribution</td>
+                  </tr>
+                </table>
+              </div>
+            </div>
+          </div>
+        </details>
       </section>
 
       <!-- Trends Tab -->
@@ -185,6 +416,65 @@
             <canvas id="volumeChart"></canvas>
           </div>
         </div>
+        <details class="edu-section card glass">
+          <summary class="edu-toggle">📚 Understanding Trend Indicators</summary>
+          <div class="edu-content">
+            <div class="edu-grid">
+              <div class="edu-block">
+                <h4>📈 Settlement Price Trends</h4>
+                <p>The settlement price is the official closing price set by SEOCH. Tracking it over time reveals the
+                  market's valuation trend for a specific option.</p>
+                <p>• <strong>Rising settlement</strong> = increasing demand / bullish sentiment</p>
+                <p>• <strong>Falling settlement</strong> = decreasing demand / bearish sentiment</p>
+              </div>
+              <div class="edu-block">
+                <h4>📊 Open Interest (OI)</h4>
+                <p>OI = total number of outstanding option contracts. Changes in OI signal money flow:</p>
+                <table class="edu-table">
+                  <tr>
+                    <td><strong>Rising OI + Rising Price</strong></td>
+                    <td>New money entering → Trend confirmation</td>
+                  </tr>
+                  <tr>
+                    <td><strong>Rising OI + Falling Price</strong></td>
+                    <td>New shorts entering → Bearish pressure</td>
+                  </tr>
+                  <tr>
+                    <td><strong>Falling OI + Rising Price</strong></td>
+                    <td>Short covering → Weak rally</td>
+                  </tr>
+                  <tr>
+                    <td><strong>Falling OI + Falling Price</strong></td>
+                    <td>Long liquidation → Weak decline</td>
+                  </tr>
+                </table>
+              </div>
+              <div class="edu-block">
+                <h4>⚖️ Put/Call Ratio (PCR)</h4>
+                <p>PCR measures market sentiment by comparing put volume/OI to call volume/OI:</p>
+                <div class="edu-formula">PCR = Put OI / Call OI</div>
+                <table class="edu-table">
+                  <tr>
+                    <td><strong>PCR &lt; 0.7</strong></td>
+                    <td>Bullish sentiment (more calls traded)</td>
+                  </tr>
+                  <tr>
+                    <td><strong>PCR ≈ 1.0</strong></td>
+                    <td>Neutral / balanced sentiment</td>
+                  </tr>
+                  <tr>
+                    <td><strong>PCR &gt; 1.3</strong></td>
+                    <td>Bearish sentiment (more puts traded)</td>
+                  </tr>
+                  <tr>
+                    <td><strong>Extreme PCR</strong></td>
+                    <td>Contrarian signal — crowd may be wrong</td>
+                  </tr>
+                </table>
+              </div>
+            </div>
+          </div>
+        </details>
       </section>
 
       <!-- AI Prediction Tab -->
@@ -279,6 +569,82 @@
             </div>
           </div>
         </div>
+
+        <details class="edu-section card glass">
+          <summary class="edu-toggle">📚 How the AI Predictions Work</summary>
+          <div class="edu-content">
+            <div class="edu-grid">
+              <div class="edu-block">
+                <h4>🧠 LSTM Neural Network</h4>
+                <p><strong>LSTM (Long Short-Term Memory)</strong> is a type of recurrent neural network designed to
+                  learn patterns in sequential data like time series.</p>
+                <div class="edu-formula">Architecture: Input → LSTM(32 units) → Dense(16) → Dense(1)<br><br>The model
+                  learns to predict the next price from a sliding window of past prices (the "lookback" period).</div>
+                <p>LSTM cells have <strong>gates</strong> that control information flow:</p>
+                <table class="edu-table">
+                  <tr>
+                    <td><strong>Forget Gate</strong></td>
+                    <td>f = σ(W_f · [h_{t-1}, x_t] + b_f) — decides what to forget</td>
+                  </tr>
+                  <tr>
+                    <td><strong>Input Gate</strong></td>
+                    <td>i = σ(W_i · [h_{t-1}, x_t] + b_i) — decides what new info to store</td>
+                  </tr>
+                  <tr>
+                    <td><strong>Output Gate</strong></td>
+                    <td>o = σ(W_o · [h_{t-1}, x_t] + b_o) — decides what to output</td>
+                  </tr>
+                </table>
+              </div>
+              <div class="edu-block">
+                <h4>📊 Data Preparation</h4>
+                <p>Before training, the price data is <strong>normalized</strong> to a 0–1 range using Min-Max scaling:
+                </p>
+                <div class="edu-formula">X_normalized = (X − X_min) / (X_max − X_min)</div>
+                <p>Data is split into sliding windows:</p>
+                <div class="edu-formula">Input: [P_t, P_{t+1}, ..., P_{t+lookback-1}]<br>Target: P_{t+lookback}</div>
+                <p>80% of windows are used for training, 20% for validation.</p>
+              </div>
+              <div class="edu-block">
+                <h4>🎯 Forecast & Signal Generation</h4>
+                <p>After training, the model uses the last <em>lookback</em> prices to predict N future prices
+                  iteratively:</p>
+                <div class="edu-formula">Signal = "Bullish" if Avg Forecast &gt; Current Price<br>Signal = "Bearish" if
+                  Avg
+                  Forecast &lt; Current Price<br><br>Confidence = min(|% Change| × 10, 95)%</div>
+                <p>The model also computes <strong>RMSE</strong> (Root Mean Squared Error) to measure fit quality:</p>
+                <div class="edu-formula">RMSE = √(Σ(actual_i − predicted_i)² / n)</div>
+              </div>
+              <div class="edu-block">
+                <h4>📰 News Sentiment Analysis</h4>
+                <p>Headlines from Yahoo Finance are scored using a <strong>financial keyword lexicon</strong> — a
+                  dictionary of bullish/bearish terms with weights.</p>
+                <div class="edu-formula">Article Score = Σ(bullish word weights) − Σ(bearish word
+                  weights)<br><br>Bullish words: "surge", "rally", "upgrade", "beat", ...<br>Bearish words: "crash",
+                  "plunge", "downgrade", "miss", ...</div>
+                <p>Each article receives a sentiment label: <span style="color:var(--accent-green)">● Positive</span>,
+                  <span style="color:var(--accent-orange)">● Neutral</span>, or <span style="color:var(--accent-red)">●
+                    Negative</span>.
+                </p>
+              </div>
+              <div class="edu-block">
+                <h4>🔮 Combined Signal</h4>
+                <p>The final signal merges both models using weighted averaging:</p>
+                <div class="edu-formula">Combined Score = 0.6 × LSTM_score + 0.4 × News_score<br><br>LSTM weight = 60%
+                  (objective, data-driven)<br>News weight = 40% (market sentiment, subjective)</div>
+                <p>Confidence is the weighted average of individual confidences, adjusted for agreement between models.
+                </p>
+              </div>
+              <div class="edu-block">
+                <h4>⚠️ Important Limitations</h4>
+                <p>• LSTM trains on <strong>settlement prices only</strong> — no volume, OI, or fundamentals</p>
+                <p>• Sentiment analysis uses a <strong>simple keyword matching</strong> — not deep NLP</p>
+                <p>• Past patterns <strong>do not guarantee</strong> future results</p>
+                <p>• This is a <strong>proof of concept</strong> — not a trading system</p>
+              </div>
+            </div>
+          </div>
+        </details>
       </section>
     </main>
 
