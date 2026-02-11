@@ -1,0 +1,6 @@
+[build]
+  command = "pip install yfinance -q && python3 scripts/fetch_news.py && npx vite build"
+  publish = "dist"
+
+[build.environment]
+  PYTHON_VERSION = "3.12"

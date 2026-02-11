@@ -1,0 +1,322 @@
+<!DOCTYPE html>
+<html lang="en">
+
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>HK Stock Options Explorer | Real HKEX Data</title>
+  <meta name="description"
+    content="Explore Hong Kong stock options with real HKEX settlement data. Build strategies, analyze Greeks, and project trends.">
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link
+    href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700;800&family=JetBrains+Mono:wght@400;500&display=swap"
+    rel="stylesheet">
+  <link rel="stylesheet" href="/src/index.css">
+</head>
+
+<body>
+  <!-- Password Gate -->
+  <div id="authGate" class="auth-gate">
+    <div class="auth-card">
+      <div class="auth-icon">◆</div>
+      <h2>HK Options <span class="accent">Explorer</span></h2>
+      <p class="auth-subtitle">Enter password to access the application</p>
+      <div class="auth-form">
+        <input type="password" id="authPassword" class="auth-input" placeholder="Password" autocomplete="off">
+        <button class="btn btn-primary btn-glow auth-btn" id="authSubmit">Unlock</button>
+      </div>
+      <p class="auth-error" id="authError"></p>
+      <p class="auth-footer">Proof of Concept · Not Financial Advice</p>
+    </div>
+  </div>
+
+  <div id="app" style="display:none">
+    <!-- Header -->
+    <header class="app-header">
+      <div class="header-left">
+        <div class="logo">
+          <span class="logo-icon">◆</span>
+          <h1>HK Options <span class="accent">Explorer</span></h1>
+        </div>
+        <span class="badge">HKEX DTOP Data</span>
+      </div>
+      <div class="header-right">
+        <div class="stock-selector" id="stockSelectorWrap">
+          <label for="stockSelector">Stock</label>
+          <select id="stockSelector">
+            <option value="">Loading...</option>
+          </select>
+        </div>
+        <div class="date-selector">
+          <label for="dateSelector">Date</label>
+          <select id="dateSelector">
+            <option value="">Loading...</option>
+          </select>
+        </div>
+      </div>
+    </header>
+
+    <!-- Tabs -->
+    <nav class="tabs" id="tabs">
+      <button class="tab active" data-tab="dashboard">
+        <span class="tab-icon">📊</span> Dashboard
+      </button>
+      <button class="tab" data-tab="chain">
+        <span class="tab-icon">⛓️</span> Options Chain
+      </button>
+      <button class="tab" data-tab="strategy">
+        <span class="tab-icon">🎯</span> Strategy Builder
+      </button>
+      <button class="tab" data-tab="trends">
+        <span class="tab-icon">📈</span> Trend Analysis
+      </button>
+      <button class="tab" data-tab="prediction">
+        <span class="tab-icon">🤖</span> AI Prediction
+      </button>
+    </nav>
+
+    <!-- Tab Content -->
+    <main class="content">
+      <!-- Dashboard Tab -->
+      <section class="tab-panel active" id="panel-dashboard">
+        <div class="dashboard-stats" id="dashboardStats"></div>
+        <div class="dashboard-grid">
+          <div class="card glass" id="topStocksCard">
+            <h3>Top Stocks by Open Interest</h3>
+            <div id="topStocksTable"></div>
+          </div>
+          <div class="card glass" id="marketOverviewCard">
+            <h3>Market Overview</h3>
+            <canvas id="marketChart"></canvas>
+          </div>
+        </div>
+      </section>
+
+      <!-- Options Chain Tab -->
+      <section class="tab-panel" id="panel-chain">
+        <div class="chain-controls">
+          <div class="expiry-selector">
+            <label for="expirySelector">Expiry</label>
+            <select id="expirySelector">
+              <option value="">Select a stock first</option>
+            </select>
+          </div>
+          <div class="chain-info" id="chainInfo"></div>
+        </div>
+        <div class="card glass chain-table-wrap">
+          <div class="chain-table-container" id="chainTableContainer">
+            <p class="placeholder-text">Select a stock and expiry to view the options chain</p>
+          </div>
+        </div>
+      </section>
+
+      <!-- Strategy Builder Tab -->
+      <section class="tab-panel" id="panel-strategy">
+        <div class="strategy-controls">
+          <div class="card glass strategy-config">
+            <h3>Strategy Configuration</h3>
+            <div class="form-group">
+              <label for="strategyType">Strategy</label>
+              <select id="strategyType">
+                <option value="covered-call">Covered Call</option>
+                <option value="protective-put">Protective Put</option>
+                <option value="collar">Collar</option>
+                <option value="bull-spread">Bull Call Spread</option>
+                <option value="bear-spread">Bear Put Spread</option>
+                <option value="straddle">Long Straddle</option>
+                <option value="strangle">Long Strangle</option>
+              </select>
+            </div>
+            <div class="form-group">
+              <label for="strategyExpiry">Expiry</label>
+              <select id="strategyExpiry">
+                <option value="">Select stock first</option>
+              </select>
+            </div>
+            <div id="strategyLegs" class="strategy-legs"></div>
+            <button class="btn btn-primary" id="buildStrategyBtn">Build Strategy</button>
+          </div>
+          <div class="card glass strategy-info">
+            <h3>Strategy Summary</h3>
+            <div id="strategySummary" class="strategy-summary">
+              <p class="placeholder-text">Configure a strategy to see analysis</p>
+            </div>
+          </div>
+        </div>
+        <div class="card glass">
+          <h3>Payoff Diagram</h3>
+          <canvas id="payoffChart"></canvas>
+        </div>
+        <div class="card glass">
+          <h3>Greeks Profile</h3>
+          <div id="greeksDisplay" class="greeks-grid"></div>
+        </div>
+      </section>
+
+      <!-- Trends Tab -->
+      <section class="tab-panel" id="panel-trends">
+        <div class="trends-grid">
+          <div class="card glass">
+            <h3>Settlement Price History</h3>
+            <div class="trends-controls">
+              <select id="trendExpiry">
+                <option>Select stock first</option>
+              </select>
+              <select id="trendStrike">
+                <option>Select expiry first</option>
+              </select>
+              <select id="trendType">
+                <option value="call">Call</option>
+                <option value="put">Put</option>
+              </select>
+            </div>
+            <canvas id="settlementChart"></canvas>
+          </div>
+          <div class="card glass">
+            <h3>Open Interest Over Time</h3>
+            <canvas id="oiChart"></canvas>
+          </div>
+          <div class="card glass">
+            <h3>Put/Call Ratio</h3>
+            <canvas id="pcrChart"></canvas>
+          </div>
+          <div class="card glass">
+            <h3>Volume Analysis</h3>
+            <canvas id="volumeChart"></canvas>
+          </div>
+        </div>
+      </section>
+
+      <!-- AI Prediction Tab -->
+      <section class="tab-panel" id="panel-prediction">
+        <div class="prediction-controls">
+          <div class="card glass prediction-config">
+            <h3>🧠 LSTM Configuration</h3>
+            <div class="pred-form-row">
+              <div class="form-group">
+                <label for="predExpiry">Expiry</label>
+                <select id="predExpiry">
+                  <option>Select stock first</option>
+                </select>
+              </div>
+              <div class="form-group">
+                <label for="predStrike">Strike (ATM)</label>
+                <select id="predStrike">
+                  <option>Select expiry first</option>
+                </select>
+              </div>
+              <div class="form-group">
+                <label for="predType">Option Type</label>
+                <select id="predType">
+                  <option value="call">Call</option>
+                  <option value="put">Put</option>
+                </select>
+              </div>
+            </div>
+            <div class="pred-form-row">
+              <div class="form-group">
+                <label for="predLookback">Lookback (days)</label>
+                <input type="number" id="predLookback" value="10" min="3" max="30">
+              </div>
+              <div class="form-group">
+                <label for="predForecast">Forecast (days)</label>
+                <input type="number" id="predForecast" value="5" min="1" max="15">
+              </div>
+              <div class="form-group">
+                <label for="predEpochs">Epochs</label>
+                <input type="number" id="predEpochs" value="50" min="10" max="200">
+              </div>
+            </div>
+            <button class="btn btn-primary btn-glow" id="runLstmBtn">
+              <span id="runLstmBtnText">⚡ Run AI Prediction</span>
+            </button>
+            <div class="progress-bar-wrap" id="progressWrap" style="display:none">
+              <div class="progress-bar" id="progressBar"></div>
+              <span class="progress-text" id="progressText">Training...</span>
+            </div>
+          </div>
+
+          <div class="card glass signal-card" id="signalCard">
+            <h3>📡 LSTM Signal</h3>
+            <div id="signalContent">
+              <p class="placeholder-text">Run the model to get predictions</p>
+            </div>
+          </div>
+        </div>
+
+        <!-- Parallel Predictions Row -->
+        <div class="prediction-dual">
+          <div class="card glass">
+            <h3>📊 Settlement Price Prediction</h3>
+            <canvas id="predictionChart"></canvas>
+          </div>
+          <div class="card glass news-card" id="newsCard">
+            <h3>📰 News Sentiment</h3>
+            <div id="newsContent">
+              <p class="placeholder-text">News sentiment will appear after running predictions</p>
+            </div>
+          </div>
+        </div>
+
+        <!-- Combined Signal -->
+        <div class="card glass combined-signal-card" id="combinedSignalCard" style="display:none">
+          <h3>🔮 Combined AI Signal</h3>
+          <div id="combinedSignalContent"></div>
+        </div>
+
+        <div class="prediction-bottom">
+          <div class="card glass">
+            <h3>🎯 Recommended Strategy</h3>
+            <div id="predStrategyContent">
+              <p class="placeholder-text">Strategy recommendation will appear after prediction</p>
+            </div>
+            <canvas id="predPayoffChart" style="margin-top:16px"></canvas>
+          </div>
+          <div class="card glass">
+            <h3>🔬 Model Metrics</h3>
+            <div id="modelMetrics">
+              <p class="placeholder-text">Model details will appear after training</p>
+            </div>
+          </div>
+        </div>
+      </section>
+    </main>
+
+    <!-- Footer -->
+    <footer class="app-footer">
+      <p>Data source: HKEX DTOP Reports (Dec 2025 – Feb 2026) · Settlement prices from SEOCH · Not financial advice</p>
+    </footer>
+  </div>
+
+  <script>
+    // Password gate — SHA-256 hash comparison (password not stored in plaintext)
+    (function () {
+      const HASH = 'cb4affc31bfeab6eaf9b2e6b034d2170b890056d30d1c85e229b8db1f3851eb0';
+      async function sha256(str) {
+        const buf = await crypto.subtle.digest('SHA-256', new TextEncoder().encode(str));
+        return Array.from(new Uint8Array(buf)).map(b => b.toString(16).padStart(2, '0')).join('');
+      }
+      function unlock() {
+        document.getElementById('authGate').style.display = 'none';
+        document.getElementById('app').style.display = '';
+        sessionStorage.setItem('hk_auth', '1');
+      }
+      if (sessionStorage.getItem('hk_auth') === '1') { unlock(); }
+      document.addEventListener('DOMContentLoaded', function () {
+        const btn = document.getElementById('authSubmit');
+        const inp = document.getElementById('authPassword');
+        const err = document.getElementById('authError');
+        async function check() {
+          const h = await sha256(inp.value);
+          if (h === HASH) { unlock(); } else { err.textContent = 'Incorrect password'; inp.value = ''; inp.focus(); }
+        }
+        btn.addEventListener('click', check);
+        inp.addEventListener('keydown', function (e) { if (e.key === 'Enter') check(); });
+        if (!sessionStorage.getItem('hk_auth')) inp.focus();
+      });
+    })();
+  </script>
+  <script type="module" src="/src/main.js"></script>
+</body>
+
+</html>

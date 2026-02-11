@@ -1,0 +1,20 @@
+{
+  "name": "hk-stock-options",
+  "version": "1.0.0",
+  "type": "module",
+  "private": true,
+  "scripts": {
+    "build:data": "node scripts/build_data.js",
+    "build:news": "python3 scripts/fetch_news.py",
+    "dev": "vite",
+    "build": "vite build",
+    "build:full": "npm run build:news && npm run build"
+  },
+  "devDependencies": {
+    "vite": "^6.1.0"
+  },
+  "dependencies": {
+    "@tensorflow/tfjs": "^4.22.0",
+    "chart.js": "^4.4.8"
+  }
+}
