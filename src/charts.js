@@ -4,9 +4,9 @@
 import { Chart, registerables } from 'chart.js';
 Chart.register(...registerables);
 
-// Shared chart defaults
-Chart.defaults.color = '#94a3b8';
-Chart.defaults.borderColor = 'rgba(99, 102, 241, 0.1)';
+// Shared chart defaults — Tableau light theme
+Chart.defaults.color = '#555555';
+Chart.defaults.borderColor = 'rgba(0, 0, 0, 0.08)';
 Chart.defaults.font.family = "'Inter', sans-serif";
 Chart.defaults.font.size = 11;
 Chart.defaults.plugins.legend.labels.usePointStyle = true;
@@ -572,4 +572,312 @@ export function renderCandlestickChart(canvasId, ohlcData, patterns = []) {
     });
 }
 
+// ============ SARIMAX Prediction Chart ============
+
+export function renderSarimaxChart(canvasId, result) {
+    destroyIfExists(canvasId);
+    const ctx = document.getElementById(canvasId).getContext('2d');
+
+    // Show last 60 days of history + forecast
+    const showDays = 60;
+    const n = result.closePrices.length;
+    const histStart = Math.max(0, n - showDays);
+    const histDates = result.priceDates.slice(histStart);
+    const histPrices = result.closePrices.slice(histStart);
+
+    // Labels = historic dates + future dates
+    const labels = [...histDates, ...result.futureDates];
+
+    // Historical line data (with nulls for future)
+    const histData = [...histPrices, ...Array(result.forecastDays).fill(null)];
+
+    // Enhanced forecast (nulls for history, then predictions)
+    const enhData = [...Array(histPrices.length - 1).fill(null), histPrices[histPrices.length - 1], ...result.enhanced.pred];
+
+    // Traditional forecast
+    const tradData = [...Array(histPrices.length - 1).fill(null), histPrices[histPrices.length - 1], ...result.traditional.pred];
+
+    // Confidence bands for enhanced
+    const enhUpper = enhData.map((v, i) => {
+        if (v === null) return null;
+        const errIdx = i - histPrices.length;
+        if (errIdx < 0) return null;
+        return v + (result.enhanced.errors[errIdx] || 0) * 1.96;
+    });
+    const enhLower = enhData.map((v, i) => {
+        if (v === null) return null;
+        const errIdx = i - histPrices.length;
+        if (errIdx < 0) return null;
+        return v - (result.enhanced.errors[errIdx] || 0) * 1.96;
+    });
+
+    chartInstances[canvasId] = new Chart(ctx, {
+        type: 'line',
+        data: {
+            labels,
+            datasets: [
+                {
+                    label: 'Historical Close',
+                    data: histData,
+                    borderColor: 'rgba(99, 102, 241, 1)',
+                    backgroundColor: 'rgba(99, 102, 241, 0.1)',
+                    borderWidth: 2,
+                    pointRadius: 0,
+                    fill: false,
+                    tension: 0.1,
+                },
+                {
+                    label: '🟢 Enhanced SARIMAX',
+                    data: enhData,
+                    borderColor: 'rgba(34, 197, 94, 1)',
+                    borderWidth: 2.5,
+                    borderDash: [6, 3],
+                    pointRadius: 3,
+                    pointBackgroundColor: 'rgba(34, 197, 94, 1)',
+                    fill: false,
+                    tension: 0.1,
+                },
+                {
+                    label: '🟠 Traditional SARIMAX',
+                    data: tradData,
+                    borderColor: 'rgba(249, 115, 22, 1)',
+                    borderWidth: 2,
+                    borderDash: [4, 4],
+                    pointRadius: 3,
+                    pointBackgroundColor: 'rgba(249, 115, 22, 1)',
+                    fill: false,
+                    tension: 0.1,
+                },
+                {
+                    label: 'Confidence Band (95%)',
+                    data: enhUpper,
+                    borderColor: 'rgba(34, 197, 94, 0.3)',
+                    borderWidth: 1,
+                    pointRadius: 0,
+                    fill: '+1',
+                    backgroundColor: 'rgba(34, 197, 94, 0.08)',
+                },
+                {
+                    label: '_lower',
+                    data: enhLower,
+                    borderColor: 'rgba(34, 197, 94, 0.3)',
+                    borderWidth: 1,
+                    pointRadius: 0,
+                    fill: false,
+                },
+            ]
+        },
+        options: {
+            responsive: true,
+            maintainAspectRatio: false,
+            plugins: {
+                legend: {
+                    display: true,
+                    labels: {
+                        filter: item => !item.text.startsWith('_'),
+                        usePointStyle: true,
+                        padding: 16,
+                    },
+                },
+                tooltip: {
+                    mode: 'index',
+                    intersect: false,
+                    callbacks: {
+                        label(ctx) {
+                            if (ctx.dataset.label.startsWith('_')) return null;
+                            return `${ctx.dataset.label}: $${ctx.parsed.y?.toFixed(2) ?? '—'}`;
+                        }
+                    }
+                },
+                annotation: undefined, // No annotation plugin needed
+            },
+            scales: {
+                x: {
+                    ticks: {
+                        maxTicksLimit: 12,
+                        maxRotation: 45,
+                    },
+                    grid: { display: false },
+                },
+                y: {
+                    title: { display: true, text: 'Price (HKD)' },
+                    ticks: {
+                        callback: v => `$${v.toFixed(0)}`,
+                    },
+                },
+            },
+            interaction: {
+                mode: 'nearest',
+                axis: 'x',
+                intersect: false,
+            },
+        },
+    });
+}
+
+// ============ Hybrid SARIMAX+LSTM Chart (Tableau Light Theme) ============
+
+const hybridChartInstances = {};
+
+export function renderHybridChart(canvasId, result) {
+    if (hybridChartInstances[canvasId]) {
+        hybridChartInstances[canvasId].destroy();
+    }
+
+    const canvas = document.getElementById(canvasId);
+    if (!canvas) return;
+
+    // Tableau palette
+    const blue = '#4E79A7';
+    const green = '#59A14F';
+    const orange = '#F28E2B';
+    const purple = '#B07AA1';
+
+    const n = result.closePrices.length;
+    const showLast = Math.min(60, n);
+
+    const histDates = result.priceDates.slice(-showLast);
+    const histPrices = result.closePrices.slice(-showLast);
+
+    const allLabels = [...histDates, ...result.futureDates];
+
+    // Historical data (show only last N days)
+    const histData = histPrices.map((p, i) => ({ x: histDates[i], y: p }));
+
+    // Forecast lines — bridge from last historical price
+    const lastPrice = histPrices[histPrices.length - 1];
+    const lastDate = histDates[histDates.length - 1];
+
+    const hybridData = [{ x: lastDate, y: lastPrice }].concat(
+        result.futureDates.map((d, i) => ({ x: d, y: result.hybrid.pred[i] }))
+    );
+    const sarimaxData = [{ x: lastDate, y: lastPrice }].concat(
+        result.futureDates.map((d, i) => ({ x: d, y: result.sarimax.pred[i] }))
+    );
+    const tradData = [{ x: lastDate, y: lastPrice }].concat(
+        result.futureDates.map((d, i) => ({ x: d, y: result.traditional.pred[i] }))
+    );
+
+    // Confidence band for hybrid
+    const errors = result.hybrid.errors || result.sarimax.errors;
+    const hybridUpper = [null].concat(
+        result.futureDates.map((d, i) => ({
+            x: d,
+            y: result.hybrid.pred[i] + 1.96 * (errors[i] || 0)
+        }))
+    );
+    const hybridLower = [null].concat(
+        result.futureDates.map((d, i) => ({
+            x: d,
+            y: result.hybrid.pred[i] - 1.96 * (errors[i] || 0)
+        }))
+    );
+
+    hybridChartInstances[canvasId] = new Chart(canvas.getContext('2d'), {
+        type: 'line',
+        data: {
+            labels: allLabels,
+            datasets: [
+                {
+                    label: 'Historical Close',
+                    data: histData,
+                    borderColor: blue,
+                    backgroundColor: blue + '18',
+                    borderWidth: 2,
+                    pointRadius: 0,
+                    fill: true,
+                    tension: 0.2,
+                },
+                {
+                    label: '🟢 Hybrid (SARIMAX+LSTM)',
+                    data: hybridData,
+                    borderColor: green,
+                    borderWidth: 2.5,
+                    borderDash: [6, 3],
+                    pointRadius: 3,
+                    pointBackgroundColor: green,
+                    fill: false,
+                    tension: 0.1,
+                },
+                {
+                    label: '🟠 SARIMAX Only',
+                    data: sarimaxData,
+                    borderColor: orange,
+                    borderWidth: 2,
+                    borderDash: [4, 4],
+                    pointRadius: 3,
+                    pointBackgroundColor: orange,
+                    fill: false,
+                    tension: 0.1,
+                },
+                {
+                    label: '🟣 Traditional',
+                    data: tradData,
+                    borderColor: purple,
+                    borderWidth: 1.5,
+                    borderDash: [2, 3],
+                    pointRadius: 2,
+                    pointBackgroundColor: purple,
+                    fill: false,
+                    tension: 0.1,
+                },
+                {
+                    label: 'Confidence Band (95%)',
+                    data: hybridUpper,
+                    borderColor: green + '40',
+                    borderWidth: 1,
+                    pointRadius: 0,
+                    fill: '+1',
+                    backgroundColor: green + '12',
+                },
+                {
+                    label: '_lower',
+                    data: hybridLower,
+                    borderColor: green + '40',
+                    borderWidth: 1,
+                    pointRadius: 0,
+                    fill: false,
+                },
+            ]
+        },
+        options: {
+            responsive: true,
+            maintainAspectRatio: false,
+            plugins: {
+                legend: {
+                    display: true,
+                    labels: {
+                        filter: item => !item.text.startsWith('_'),
+                        usePointStyle: true,
+                        padding: 16,
+                        color: '#333',
+                        font: { size: 11 },
+                    },
+                },
+                tooltip: {
+                    mode: 'index',
+                    intersect: false,
+                    callbacks: {
+                        label(ctx) {
+                            if (ctx.dataset.label.startsWith('_')) return null;
+                            return `${ctx.dataset.label}: $${ctx.parsed.y?.toFixed(2) ?? '—'}`;
+                        }
+                    }
+                },
+            },
+            scales: {
+                x: {
+                    ticks: { maxTicksLimit: 12, maxRotation: 45, color: '#666' },
+                    grid: { display: false },
+                },
+                y: {
+                    title: { display: true, text: 'Price (HKD)', color: '#333' },
+                    ticks: { callback: v => `$${v.toFixed(0)}`, color: '#666' },
+                    grid: { color: '#E5E5E5' },
+                },
+            },
+            interaction: { mode: 'nearest', axis: 'x', intersect: false },
+        },
+    });
+}
 

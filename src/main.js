@@ -5,10 +5,12 @@ import './index.css';
 import { loadIndex, loadStockData, loadNewsData, getChain, getExpiries, getDates, getSettlementHistory, getOIHistory } from './data.js';
 import { greeks, impliedVolatility, daysToExpiry } from './blackscholes.js';
 import { STRATEGIES, calculatePayoff, strategyMetrics, strategyGreeks } from './strategies.js';
-import { renderMarketChart, renderPayoffChart, renderSettlementChart, renderOIChart, renderPCRChart, renderVolumeChart, renderPredictionChart, renderCandlestickChart } from './charts.js';
+import { renderMarketChart, renderPayoffChart, renderSettlementChart, renderOIChart, renderPCRChart, renderVolumeChart, renderPredictionChart, renderCandlestickChart, renderSarimaxChart, renderHybridChart } from './charts.js';
 import { trainAndPredict } from './lstm.js';
 import { analyzeSentiment, combinedSignal } from './sentiment.js';
 import { buildOHLC, detectPatterns, backtestPatterns } from './candlestick.js';
+import { loadPriceData, runFullPipeline } from './sarimax.js';
+import { runHybridPipeline } from './hybrid.js';
 
 // ============ State ============
 let state = {
@@ -16,7 +18,7 @@ let state = {
   currentStock: null,
   currentStockData: null,
   currentDate: null,
-  currentTab: 'dashboard'
+  currentTab: 'stock-analysis'
 };
 
 // ============ Init ============
@@ -57,6 +59,30 @@ async function init() {
   document.getElementById('runLstmBtn').addEventListener('click', onRunLSTM);
   document.getElementById('predExpiry').addEventListener('change', onPredExpiryChange);
 
+  // SARIMAX tab
+  document.getElementById('btnRunSarimax').addEventListener('click', onRunSarimax);
+
+  // Hybrid tab
+  document.getElementById('btnRunHybrid').addEventListener('click', onRunHybrid);
+
+  // Sub-tab switching (works for all sub-tab navs)
+  document.querySelectorAll('.sub-tabs').forEach(nav => {
+    nav.addEventListener('click', (e) => {
+      const btn = e.target.closest('.sub-tab');
+      if (!btn) return;
+      // Deactivate siblings
+      nav.querySelectorAll('.sub-tab').forEach(t => t.classList.remove('active'));
+      btn.classList.add('active');
+      // Show matching sub-panel
+      const parentPanel = nav.closest('.tab-panel');
+      parentPanel.querySelectorAll('.sub-panel').forEach(p => p.classList.remove('active'));
+      document.getElementById(btn.dataset.subtab).classList.add('active');
+    });
+  });
+
+  // Candlestick scan patterns button  
+  document.getElementById('btnScanPatterns').addEventListener('click', onScanPatterns);
+
   // Render dashboard
   renderDashboard();
 
@@ -86,13 +112,11 @@ function onTabClick(e) {
   state.currentTab = tabName;
 
   // Trigger re-render for the new tab
-  if (tabName === 'trends' && state.currentStockData) {
+  if (tabName === 'options-explorer' && state.currentStockData) {
     renderTrends();
-  }
-  if (tabName === 'prediction' && state.currentStockData) {
     updatePredSelectors();
   }
-  if (tabName === 'candlestick' && state.currentStockData) {
+  if (tabName === 'stock-analysis' && state.currentStockData) {
     updateCandleSelectors();
   }
 }
@@ -108,18 +132,24 @@ async function onStockChange() {
   // Update expiry selectors
   updateExpirySelectors();
 
-  // Render current tab
-  if (state.currentTab === 'chain') renderChain();
-  if (state.currentTab === 'strategy') onStrategyTypeChange();
-  if (state.currentTab === 'trends') renderTrends();
-  if (state.currentTab === 'prediction') updatePredSelectors();
-  if (state.currentTab === 'candlestick') updateCandleSelectors();
+  // Render views for current tab
+  if (state.currentTab === 'options-explorer') {
+    renderChain();
+    renderTrends();
+    updatePredSelectors();
+  }
+  if (state.currentTab === 'strategy') {
+    onStrategyTypeChange();
+  }
+  if (state.currentTab === 'stock-analysis') {
+    updateCandleSelectors();
+  }
 }
 
 function onDateChange() {
   state.currentDate = document.getElementById('dateSelector').value;
   updateExpirySelectors();
-  if (state.currentTab === 'chain') renderChain();
+  if (state.currentTab === 'options-explorer') renderChain();
   if (state.currentTab === 'strategy') onStrategyTypeChange();
 }
 
@@ -742,7 +772,7 @@ function updateCandleSelectors() {
   // Wire up events
   expSel.onchange = onCandleExpiryChange;
   document.getElementById('candleType').onchange = onCandleExpiryChange;
-  document.getElementById('btnScanPatterns').onclick = onScanPatterns;
+  // Candlestick scan button already bound in init()
 }
 
 function onCandleExpiryChange() {
@@ -854,6 +884,148 @@ function onScanPatterns() {
         <tbody>${patTable}</tbody>
       </table>
     `;
+  }
+}
+
+// ============ SARIMAX Tab ============
+async function onRunSarimax() {
+  const btn = document.getElementById('btnRunSarimax');
+  const noteEl = document.getElementById('sarimaxChartNote');
+  const compEl = document.getElementById('sarimaxComparison');
+  const sentEl = document.getElementById('sarimaxSentiment');
+  const horizon = parseInt(document.getElementById('sarimaxHorizon').value) || 10;
+
+  if (!state.currentStock) {
+    noteEl.textContent = 'Please select a stock first.';
+    return;
+  }
+
+  // Show loading state
+  btn.disabled = true;
+  btn.innerHTML = '<div class="spinner" style="width:16px;height:16px;border:2px solid rgba(99,102,241,0.3);border-top-color:var(--accent-primary);border-radius:50%;animation:spin 0.8s linear infinite;display:inline-block"></div> Running...';
+  noteEl.innerHTML = '<div class="sarimax-loading"><div class="spinner"></div>Loading price data and running SARIMAX models... This may take a moment.</div>';
+  compEl.style.display = 'none';
+  sentEl.style.display = 'none';
+
+  try {
+    // Load price data
+    const priceData = await loadPriceData(state.currentStock);
+    if (!priceData || !priceData.prices || priceData.prices.length < 30) {
+      noteEl.textContent = `No price data available for ${state.currentStock}. Please run fetch_prices.py first.`;
+      return;
+    }
+
+    // Load news (may be null)
+    const newsData = await loadNewsData(state.currentStock);
+    const articles = newsData?.articles || [];
+
+    noteEl.innerHTML = '<div class="sarimax-loading"><div class="spinner"></div>Training SARIMAX models and generating forecasts...</div>';
+
+    // Small delay to let UI update
+    await new Promise(r => setTimeout(r, 50));
+
+    // Run full pipeline
+    const result = await runFullPipeline(priceData, articles, horizon);
+
+    // Render chart
+    renderSarimaxChart('sarimaxChart', result);
+
+    // Update note
+    const lastDate = result.priceDates[result.priceDates.length - 1];
+    const ticker = priceData.ticker || state.currentStock;
+    noteEl.textContent = `${state.currentStock} (${ticker}) — ${result.closePrices.length} days of history. Last: $${result.closePrices[result.closePrices.length - 1].toFixed(2)} on ${lastDate}. Forecasting ${horizon} days ahead.`;
+
+    // Update comparison metrics (null values displayed as N/A)
+    const fmtMetric = (v, prefix, suffix) => v !== null ? `${prefix}${v}${suffix}` : 'N/A';
+    document.getElementById('enhMAE').textContent = fmtMetric(result.enhanced.mae, '$', '');
+    document.getElementById('enhRMSE').textContent = fmtMetric(result.enhanced.rmse, '$', '');
+    document.getElementById('enhMAPE').textContent = fmtMetric(result.enhanced.mape, '', '%');
+    document.getElementById('tradMAE').textContent = fmtMetric(result.traditional.mae, '$', '');
+    document.getElementById('tradRMSE').textContent = fmtMetric(result.traditional.rmse, '$', '');
+    document.getElementById('tradMAPE').textContent = fmtMetric(result.traditional.mape, '', '%');
+    compEl.style.display = '';
+
+    // Highlight winner (only if both have valid MAE)
+    const enhBetter = result.enhanced.mae !== null && result.traditional.mae !== null && result.enhanced.mae <= result.traditional.mae;
+    const tradBetter = result.enhanced.mae !== null && result.traditional.mae !== null && result.traditional.mae < result.enhanced.mae;
+    document.getElementById('enhMAE').style.color = enhBetter ? 'var(--accent-green)' : '';
+    document.getElementById('tradMAE').style.color = tradBetter ? 'var(--accent-green)' : '';
+
+    // Update sentiment summary
+    document.getElementById('sentBull').textContent = result.sentiment.bullDays;
+    document.getElementById('sentBear').textContent = result.sentiment.bearDays;
+    document.getElementById('sentNeut').textContent = result.sentiment.neutralDays;
+    document.getElementById('sentTotal').textContent = result.sentiment.total;
+    sentEl.style.display = '';
+
+  } catch (err) {
+    console.error('SARIMAX error:', err);
+    noteEl.textContent = `Error: ${err.message}. Check console for details.`;
+  } finally {
+    btn.disabled = false;
+    btn.innerHTML = '<span class="tab-icon">⚡</span> Run Prediction';
+  }
+}
+
+// ============ Hybrid SARIMAX+LSTM ============
+
+async function onRunHybrid() {
+  const btn = document.getElementById('btnRunHybrid');
+  const noteEl = document.getElementById('hybridChartNote');
+  const compEl = document.getElementById('hybridComparison');
+  const horizon = parseInt(document.getElementById('hybridHorizon').value) || 10;
+
+  if (!state.currentStock) {
+    noteEl.textContent = 'Please select a stock first.';
+    return;
+  }
+
+  btn.disabled = true;
+  btn.innerHTML = '<div class="spinner" style="width:16px;height:16px;border:2px solid rgba(78,121,167,0.25);border-top-color:#4E79A7;border-radius:50%;animation:spin 0.8s linear infinite;display:inline-block"></div> Running...';
+  noteEl.innerHTML = '<div class="eq-loading"><div class="spinner"></div>Loading data and training Hybrid SARIMAX+LSTM model... This includes LSTM training and may take a moment.</div>';
+  compEl.style.display = 'none';
+
+  try {
+    const priceData = await loadPriceData(state.currentStock);
+    if (!priceData || !priceData.prices || priceData.prices.length < 30) {
+      noteEl.textContent = `No price data available for ${state.currentStock}. Run fetch_prices.py first.`;
+      return;
+    }
+
+    const newsData = await loadNewsData(state.currentStock);
+    const articles = newsData?.articles || [];
+
+    noteEl.innerHTML = '<div class="eq-loading"><div class="spinner"></div>Training SARIMAX + LSTM residual model...</div>';
+    await new Promise(r => setTimeout(r, 50));
+
+    const result = await runHybridPipeline(priceData, articles, horizon);
+
+    // Render chart
+    renderHybridChart('hybridChart', result);
+
+    // Update note
+    const lastDate = result.priceDates[result.priceDates.length - 1];
+    noteEl.textContent = `${state.currentStock} — ${result.closePrices.length} days of history. Last: $${result.closePrices[result.closePrices.length - 1].toFixed(2)} on ${lastDate}. Forecasting ${horizon} days.`;
+
+    // Display three-model metrics
+    const fmt = (v, pre, suf) => v !== null ? `${pre}${v}${suf}` : 'N/A';
+    document.getElementById('hybMAE').textContent = fmt(result.hybrid.mae, '$', '');
+    document.getElementById('hybRMSE').textContent = fmt(result.hybrid.rmse, '$', '');
+    document.getElementById('hybMAPE').textContent = fmt(result.hybrid.mape, '', '%');
+    document.getElementById('hybSarMAE').textContent = fmt(result.sarimax.mae, '$', '');
+    document.getElementById('hybSarRMSE').textContent = fmt(result.sarimax.rmse, '$', '');
+    document.getElementById('hybSarMAPE').textContent = fmt(result.sarimax.mape, '', '%');
+    document.getElementById('hybTradMAE').textContent = fmt(result.traditional.mae, '$', '');
+    document.getElementById('hybTradRMSE').textContent = fmt(result.traditional.rmse, '$', '');
+    document.getElementById('hybTradMAPE').textContent = fmt(result.traditional.mape, '', '%');
+    compEl.style.display = '';
+
+  } catch (err) {
+    console.error('Hybrid model error:', err);
+    noteEl.textContent = `Error: ${err.message}. Check console for details.`;
+  } finally {
+    btn.disabled = false;
+    btn.innerHTML = '⚡ Run Hybrid Model';
   }
 }
 
