@@ -5,9 +5,10 @@ import './index.css';
 import { loadIndex, loadStockData, loadNewsData, getChain, getExpiries, getDates, getSettlementHistory, getOIHistory } from './data.js';
 import { greeks, impliedVolatility, daysToExpiry } from './blackscholes.js';
 import { STRATEGIES, calculatePayoff, strategyMetrics, strategyGreeks } from './strategies.js';
-import { renderMarketChart, renderPayoffChart, renderSettlementChart, renderOIChart, renderPCRChart, renderVolumeChart, renderPredictionChart } from './charts.js';
+import { renderMarketChart, renderPayoffChart, renderSettlementChart, renderOIChart, renderPCRChart, renderVolumeChart, renderPredictionChart, renderCandlestickChart } from './charts.js';
 import { trainAndPredict } from './lstm.js';
 import { analyzeSentiment, combinedSignal } from './sentiment.js';
+import { buildOHLC, detectPatterns, backtestPatterns } from './candlestick.js';
 
 // ============ State ============
 let state = {
@@ -91,6 +92,9 @@ function onTabClick(e) {
   if (tabName === 'prediction' && state.currentStockData) {
     updatePredSelectors();
   }
+  if (tabName === 'candlestick' && state.currentStockData) {
+    updateCandleSelectors();
+  }
 }
 
 // ============ Stock Change ============
@@ -109,6 +113,7 @@ async function onStockChange() {
   if (state.currentTab === 'strategy') onStrategyTypeChange();
   if (state.currentTab === 'trends') renderTrends();
   if (state.currentTab === 'prediction') updatePredSelectors();
+  if (state.currentTab === 'candlestick') updateCandleSelectors();
 }
 
 function onDateChange() {
@@ -720,6 +725,136 @@ function renderCombinedSignal(combined, lstmResult, newsResult) {
         </div>
       </div>
     </div>`;
+}
+
+// ============ Candlestick Tab ============
+function updateCandleSelectors() {
+  if (!state.currentStockData) return;
+  const expiries = getExpiries(state.currentStockData, state.currentDate);
+  const expSel = document.getElementById('candleExpiry');
+  const strikeSel = document.getElementById('candleStrike');
+
+  expSel.innerHTML = expiries.map(e => `<option value="${e}">${e}</option>`).join('');
+
+  // Populate strikes for first expiry
+  onCandleExpiryChange();
+
+  // Wire up events
+  expSel.onchange = onCandleExpiryChange;
+  document.getElementById('candleType').onchange = onCandleExpiryChange;
+  document.getElementById('btnScanPatterns').onclick = onScanPatterns;
+}
+
+function onCandleExpiryChange() {
+  const expiry = document.getElementById('candleExpiry').value;
+  const type = document.getElementById('candleType').value;
+  if (!expiry || !state.currentStockData) return;
+
+  const chain = getChain(state.currentStockData, state.currentDate, expiry);
+  const strikes = [...new Set(chain.filter(r => {
+    const opt = r[type];
+    return opt && opt.settle > 0;
+  }).map(r => r.strike))].sort((a, b) => a - b);
+  const strikeSel = document.getElementById('candleStrike');
+  strikeSel.innerHTML = strikes.map(s => `<option value="${s}">${s}</option>`).join('');
+}
+
+function onScanPatterns() {
+  const expiry = document.getElementById('candleExpiry').value;
+  const strike = parseFloat(document.getElementById('candleStrike').value);
+  const type = document.getElementById('candleType').value;
+
+  if (!expiry || !strike || !state.currentStockData) return;
+
+  // Build settlement series for this option
+  const history = getSettlementHistory(state.currentStockData, expiry, strike, type);
+  if (!history || history.length < 3) {
+    document.getElementById('patternList').innerHTML = '<p class="placeholder-text">Not enough data points for pattern detection (need 3+)</p>';
+    return;
+  }
+
+  // Build OHLC
+  const ohlc = buildOHLC(history);
+  if (ohlc.length < 2) {
+    document.getElementById('patternList').innerHTML = '<p class="placeholder-text">Not enough OHLC data</p>';
+    return;
+  }
+
+  // Detect patterns
+  const patterns = detectPatterns(ohlc);
+
+  // Render chart
+  document.getElementById('candlePlaceholder').style.display = 'none';
+  renderCandlestickChart('candlestickChart', ohlc, patterns);
+
+  // Render pattern list
+  const listEl = document.getElementById('patternList');
+  if (patterns.length === 0) {
+    listEl.innerHTML = '<p class="placeholder-text">No patterns detected in this price series</p>';
+  } else {
+    const signalColors = { bullish: 'var(--accent-green)', bearish: 'var(--accent-red)', reversal: 'var(--accent-orange)' };
+    listEl.innerHTML = `
+      <div class="pattern-count">${patterns.length} pattern${patterns.length > 1 ? 's' : ''} detected</div>
+      <div class="pattern-items">
+        ${patterns.map(p => `
+          <div class="pattern-item">
+            <span class="pattern-emoji">${p.emoji}</span>
+            <span class="pattern-name">${p.name}</span>
+            <span class="pattern-signal" style="color:${signalColors[p.signal]}">${p.signal.toUpperCase()}</span>
+            <span class="pattern-date">${p.date}</span>
+          </div>
+        `).join('')}
+      </div>
+    `;
+  }
+
+  // Backtest
+  const backtest = backtestPatterns(ohlc, patterns, 3);
+  const btEl = document.getElementById('backtestResults');
+
+  if (backtest.summary.total === 0) {
+    btEl.innerHTML = '<p class="placeholder-text">No tradable signals to backtest</p>';
+  } else {
+    const winColor = backtest.summary.winRate >= 50 ? 'var(--accent-green)' : 'var(--accent-red)';
+    const returnColor = backtest.summary.avgReturn >= 0 ? 'var(--accent-green)' : 'var(--accent-red)';
+    let patTable = '';
+    for (const [name, info] of Object.entries(backtest.byPattern)) {
+      const wr = info.total ? ((info.wins / info.total) * 100).toFixed(0) : 0;
+      const wrColor = wr >= 50 ? 'var(--accent-green)' : 'var(--accent-red)';
+      patTable += `<tr>
+        <td>${info.emoji} ${name}</td>
+        <td style="color:${info.signal === 'bullish' ? 'var(--accent-green)' : 'var(--accent-red)'}">${info.signal}</td>
+        <td>${info.total}</td>
+        <td style="color:${wrColor}">${wr}%</td>
+        <td style="color:${info.totalReturn >= 0 ? 'var(--accent-green)' : 'var(--accent-red)'}">${info.totalReturn.toFixed(2)}%</td>
+      </tr>`;
+    }
+
+    btEl.innerHTML = `
+      <div class="backtest-summary">
+        <div class="bt-stat">
+          <span class="bt-label">Signals</span>
+          <span class="bt-value">${backtest.summary.total}</span>
+        </div>
+        <div class="bt-stat">
+          <span class="bt-label">Win Rate</span>
+          <span class="bt-value" style="color:${winColor}">${backtest.summary.winRate}%</span>
+        </div>
+        <div class="bt-stat">
+          <span class="bt-label">Avg Return</span>
+          <span class="bt-value" style="color:${returnColor}">${backtest.summary.avgReturn}%</span>
+        </div>
+        <div class="bt-stat">
+          <span class="bt-label">Hold Period</span>
+          <span class="bt-value">3 days</span>
+        </div>
+      </div>
+      <table class="bt-table">
+        <thead><tr><th>Pattern</th><th>Signal</th><th>Count</th><th>Win Rate</th><th>Total Return</th></tr></thead>
+        <tbody>${patTable}</tbody>
+      </table>
+    `;
+  }
 }
 
 // ============ Boot ============

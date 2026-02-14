@@ -432,3 +432,144 @@ export function renderPredictionChart(canvasId, dates, actual, fitted, forecastD
     });
 }
 
+
+// Candlestick Chart — Custom bars for OHLC data with pattern markers
+export function renderCandlestickChart(canvasId, ohlcData, patterns = []) {
+    destroyIfExists(canvasId);
+    const ctx = document.getElementById(canvasId).getContext('2d');
+
+    const labels = ohlcData.map(d => d.date);
+
+    // Build floating bars: [low of body, high of body]
+    const bodyData = ohlcData.map(d => [
+        Math.min(d.open, d.close),
+        Math.max(d.open, d.close)
+    ]);
+
+    const colors = ohlcData.map(d =>
+        d.close >= d.open ? 'rgba(34,197,94,0.85)' : 'rgba(239,68,68,0.85)'
+    );
+    const borderColors = ohlcData.map(d =>
+        d.close >= d.open ? 'rgba(34,197,94,1)' : 'rgba(239,68,68,1)'
+    );
+
+    // Pattern markers as scatter points
+    const bullishMarkers = [];
+    const bearishMarkers = [];
+    const neutralMarkers = [];
+
+    for (const p of patterns) {
+        const wick = ohlcData[p.index].high - ohlcData[p.index].low;
+        if (p.signal === 'bullish') {
+            bullishMarkers.push({ x: p.date, y: ohlcData[p.index].low - wick * 0.2 });
+        } else if (p.signal === 'bearish') {
+            bearishMarkers.push({ x: p.date, y: ohlcData[p.index].high + wick * 0.2 });
+        } else {
+            neutralMarkers.push({ x: p.date, y: ohlcData[p.index].high + wick * 0.2 });
+        }
+    }
+
+    // Plugin to draw wicks
+    const wickPlugin = {
+        id: 'candlestickWicks',
+        afterDatasetsDraw(chart) {
+            const { ctx: c, scales: { y } } = chart;
+            const meta = chart.getDatasetMeta(0);
+
+            ohlcData.forEach((d, i) => {
+                const bar = meta.data[i];
+                if (!bar) return;
+                c.save();
+                c.strokeStyle = borderColors[i];
+                c.lineWidth = 1.5;
+                c.beginPath();
+                c.moveTo(bar.x, y.getPixelForValue(d.high));
+                c.lineTo(bar.x, y.getPixelForValue(d.low));
+                c.stroke();
+                c.restore();
+            });
+        }
+    };
+
+    chartInstances[canvasId] = new Chart(ctx, {
+        type: 'bar',
+        plugins: [wickPlugin],
+        data: {
+            labels,
+            datasets: [
+                {
+                    label: 'OHLC',
+                    data: bodyData,
+                    backgroundColor: colors,
+                    borderColor: borderColors,
+                    borderWidth: 1,
+                    borderSkipped: false,
+                    barPercentage: 0.6,
+                    categoryPercentage: 0.8,
+                },
+                {
+                    type: 'scatter',
+                    label: '↑ Bullish',
+                    data: bullishMarkers,
+                    pointStyle: 'triangle',
+                    pointRadius: 8,
+                    backgroundColor: 'rgba(34,197,94,0.9)',
+                    borderColor: '#22c55e',
+                    borderWidth: 1,
+                },
+                {
+                    type: 'scatter',
+                    label: '↓ Bearish',
+                    data: bearishMarkers,
+                    pointStyle: 'triangle',
+                    rotation: 180,
+                    pointRadius: 8,
+                    backgroundColor: 'rgba(239,68,68,0.9)',
+                    borderColor: '#ef4444',
+                    borderWidth: 1,
+                },
+                {
+                    type: 'scatter',
+                    label: '◆ Reversal',
+                    data: neutralMarkers,
+                    pointStyle: 'rectRot',
+                    pointRadius: 6,
+                    backgroundColor: 'rgba(250,204,21,0.9)',
+                    borderColor: '#facc15',
+                    borderWidth: 1,
+                },
+            ]
+        },
+        options: {
+            responsive: true,
+            maintainAspectRatio: false,
+            plugins: {
+                tooltip: {
+                    callbacks: {
+                        label(context) {
+                            if (context.datasetIndex === 0) {
+                                const d = ohlcData[context.dataIndex];
+                                return `O:${d.open} H:${d.high} L:${d.low} C:${d.close}`;
+                            }
+                            return context.dataset.label;
+                        }
+                    }
+                },
+                legend: {
+                    display: true,
+                    labels: { filter: item => item.datasetIndex > 0 }
+                }
+            },
+            scales: {
+                x: {
+                    ticks: { maxRotation: 45, autoSkip: true, maxTicksLimit: 20 }
+                },
+                y: {
+                    ticks: { callback: v => '$' + v.toFixed(2) }
+                }
+            }
+        }
+    });
+}
+
+

@@ -73,6 +73,9 @@
       <button class="tab" data-tab="prediction">
         <span class="tab-icon">🤖</span> AI Prediction
       </button>
+      <button class="tab" data-tab="candlestick">
+        <span class="tab-icon">🕯️</span> Candlestick
+      </button>
     </nav>
 
     <!-- Tab Content -->
@@ -641,6 +644,111 @@
                 <p>• Sentiment analysis uses a <strong>simple keyword matching</strong> — not deep NLP</p>
                 <p>• Past patterns <strong>do not guarantee</strong> future results</p>
                 <p>• This is a <strong>proof of concept</strong> — not a trading system</p>
+              </div>
+            </div>
+          </div>
+        </details>
+      </section>
+
+      <!-- Candlestick Tab -->
+      <section class="tab-panel" id="panel-candlestick">
+        <div class="candle-controls card glass">
+          <h3>🕯️ Candlestick Pattern Scanner</h3>
+          <div class="candle-selectors">
+            <div>
+              <label for="candleExpiry">Expiry</label>
+              <select id="candleExpiry"><option>Select stock first</option></select>
+            </div>
+            <div>
+              <label for="candleStrike">Strike</label>
+              <select id="candleStrike"><option>Select expiry first</option></select>
+            </div>
+            <div>
+              <label for="candleType">Type</label>
+              <select id="candleType">
+                <option value="call">Call</option>
+                <option value="put">Put</option>
+              </select>
+            </div>
+            <button class="btn-primary" id="btnScanPatterns">🔍 Scan Patterns</button>
+          </div>
+        </div>
+
+        <div class="candle-chart-wrap card glass">
+          <h3>📊 Candlestick Chart</h3>
+          <div class="candle-chart-container">
+            <canvas id="candlestickChart"></canvas>
+          </div>
+          <p class="placeholder-text" id="candlePlaceholder">Select an option above and click "Scan Patterns" to generate the chart</p>
+        </div>
+
+        <div class="candle-results">
+          <div class="card glass">
+            <h3>🔍 Detected Patterns</h3>
+            <div id="patternList">
+              <p class="placeholder-text">Patterns will appear after scanning</p>
+            </div>
+          </div>
+          <div class="card glass">
+            <h3>📈 Backtest Results</h3>
+            <div id="backtestResults">
+              <p class="placeholder-text">Backtest results will appear after scanning</p>
+            </div>
+          </div>
+        </div>
+
+        <details class="edu-section card glass">
+          <summary class="edu-toggle">📚 Candlestick Patterns Explained</summary>
+          <div class="edu-content">
+            <div class="edu-grid">
+              <div class="edu-block">
+                <h4>📖 What Are Candlesticks?</h4>
+                <p>A candlestick shows 4 prices for a period: <strong>Open, High, Low, Close</strong> (OHLC).</p>
+                <div class="edu-formula">Body = |Close − Open| (filled rectangle)<br>Upper Wick = High − max(O, C)<br>Lower Wick = min(O, C) − Low<br><br>🟢 Green = Close &gt; Open (bullish)<br>🔴 Red = Close &lt; Open (bearish)</div>
+                <p>Patterns formed by 1–3 candles can signal potential reversals or continuations.</p>
+              </div>
+              <div class="edu-block">
+                <h4>✚ Doji</h4>
+                <p>Open ≈ Close (tiny body). Signals <strong>market indecision</strong> and a potential reversal.</p>
+                <p class="edu-hint">📌 Most significant at trend extremes. Confirm with next candle.</p>
+              </div>
+              <div class="edu-block">
+                <h4>🔨 Hammer &amp; 🌠 Shooting Star</h4>
+                <p><strong>Hammer:</strong> Small body + long lower shadow (≥2× body) in a <em>downtrend</em> → bullish reversal.</p>
+                <p><strong>Shooting Star:</strong> Small body + long upper shadow in an <em>uptrend</em> → bearish reversal.</p>
+                <p class="edu-hint">📌 The long shadow shows sellers/buyers were rejected.</p>
+              </div>
+              <div class="edu-block">
+                <h4>🟢 Bullish Engulfing &amp; 🔴 Bearish Engulfing</h4>
+                <p><strong>Bullish:</strong> A large green candle completely engulfs the previous red candle → reversal up.</p>
+                <p><strong>Bearish:</strong> A large red candle completely engulfs the previous green candle → reversal down.</p>
+                <p class="edu-hint">📌 Strongest at support/resistance levels with high volume.</p>
+              </div>
+              <div class="edu-block">
+                <h4>🤰 Harami ("Pregnant")</h4>
+                <p>A small candle contained within the body of the previous large candle.</p>
+                <p><strong>Bullish Harami:</strong> Small green inside large red → selling slowing.</p>
+                <p><strong>Bearish Harami:</strong> Small red inside large green → buying slowing.</p>
+              </div>
+              <div class="edu-block">
+                <h4>🌅 Morning Star &amp; 🌆 Evening Star</h4>
+                <p>Three-candle reversal patterns:</p>
+                <p><strong>Morning Star:</strong> Red → small body → Green (dawn of a rally)</p>
+                <p><strong>Evening Star:</strong> Green → small body → Red (dusk before decline)</p>
+                <p class="edu-hint">📌 The small middle candle represents the "turning point" of sentiment.</p>
+              </div>
+              <div class="edu-block">
+                <h4>⬆️ Three White Soldiers &amp; ⬇️ Three Black Crows</h4>
+                <p><strong>Soldiers:</strong> 3 consecutive strong green candles → powerful bullish momentum.</p>
+                <p><strong>Crows:</strong> 3 consecutive strong red candles → powerful bearish momentum.</p>
+                <p class="edu-hint">📌 Most reliable when body sizes are consistent and shadows are small.</p>
+              </div>
+              <div class="edu-block">
+                <h4>⚠️ Important Notes</h4>
+                <p>• OHLC here is <strong>synthetic</strong> — derived from daily settlement prices, not live market data</p>
+                <p>• Always <strong>confirm</strong> patterns with volume, support/resistance, and other indicators</p>
+                <p>• No single pattern guarantees results — use as <strong>one tool among many</strong></p>
+                <p>• Backtest win rates are based on a simple 3-day hold strategy</p>
               </div>
             </div>
           </div>

@@ -1457,3 +1457,153 @@ details[open]>.edu-toggle::after {
     grid-template-columns: 1fr;
   }
 }
+
+/* ============ Candlestick Tab ============ */
+.candle-selectors {
+  display: flex;
+  gap: 1rem;
+  align-items: flex-end;
+  flex-wrap: wrap;
+}
+
+.candle-selectors > div {
+  display: flex;
+  flex-direction: column;
+  gap: 0.3rem;
+}
+
+.candle-selectors label {
+  font-size: 0.75rem;
+  color: var(--text-muted);
+  text-transform: uppercase;
+  letter-spacing: 0.5px;
+}
+
+.candle-chart-container {
+  height: 400px;
+  position: relative;
+}
+
+.candle-results {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 1.2rem;
+  margin-top: 1.2rem;
+}
+
+/* Pattern list */
+.pattern-count {
+  font-size: 0.85rem;
+  color: var(--accent-primary);
+  font-weight: 600;
+  margin-bottom: 0.75rem;
+}
+
+.pattern-items {
+  display: flex;
+  flex-direction: column;
+  gap: 0.4rem;
+  max-height: 300px;
+  overflow-y: auto;
+}
+
+.pattern-item {
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+  padding: 0.5rem 0.75rem;
+  background: rgba(15, 23, 42, 0.5);
+  border-radius: 8px;
+  font-size: 0.82rem;
+}
+
+.pattern-emoji {
+  font-size: 1rem;
+}
+
+.pattern-name {
+  color: var(--text-primary);
+  font-weight: 500;
+  flex: 1;
+}
+
+.pattern-signal {
+  font-weight: 700;
+  font-size: 0.7rem;
+  text-transform: uppercase;
+  letter-spacing: 0.5px;
+}
+
+.pattern-date {
+  color: var(--text-muted);
+  font-size: 0.75rem;
+}
+
+/* Backtest results */
+.backtest-summary {
+  display: grid;
+  grid-template-columns: repeat(4, 1fr);
+  gap: 0.75rem;
+  margin-bottom: 1rem;
+}
+
+.bt-stat {
+  text-align: center;
+  padding: 0.75rem;
+  background: rgba(15, 23, 42, 0.5);
+  border-radius: 8px;
+}
+
+.bt-label {
+  display: block;
+  font-size: 0.7rem;
+  color: var(--text-muted);
+  text-transform: uppercase;
+  letter-spacing: 0.5px;
+  margin-bottom: 0.3rem;
+}
+
+.bt-value {
+  font-size: 1.1rem;
+  font-weight: 700;
+  color: var(--text-primary);
+}
+
+.bt-table {
+  width: 100%;
+  border-collapse: collapse;
+  font-size: 0.8rem;
+}
+
+.bt-table th {
+  text-align: left;
+  padding: 0.5rem 0.6rem;
+  color: var(--text-muted);
+  font-weight: 500;
+  font-size: 0.7rem;
+  text-transform: uppercase;
+  letter-spacing: 0.5px;
+  border-bottom: 1px solid rgba(99, 102, 241, 0.15);
+}
+
+.bt-table td {
+  padding: 0.5rem 0.6rem;
+  border-bottom: 1px solid rgba(99, 102, 241, 0.08);
+  color: var(--text-secondary);
+}
+
+.bt-table tr:last-child td {
+  border-bottom: none;
+}
+
+@media (max-width: 768px) {
+  .candle-results {
+    grid-template-columns: 1fr;
+  }
+  .backtest-summary {
+    grid-template-columns: repeat(2, 1fr);
+  }
+  .candle-selectors {
+    flex-direction: column;
+  }
+}
