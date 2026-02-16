@@ -1962,3 +1962,324 @@ details[open]>.edu-toggle::after {
     flex-direction: column;
   }
 }
+
+/* ============ Day Trading Signals ============ */
+
+.signal-controls {
+  margin-top: 1rem;
+}
+
+.signal-controls-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(220px, 1fr));
+  gap: 12px;
+}
+
+.signal-control-group {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+}
+
+.signal-label {
+  font-size: 0.82rem;
+  font-weight: 600;
+  color: #444;
+}
+
+.signal-select {
+  padding: 6px 10px;
+  border: 1px solid #D0D0D0;
+  border-radius: 6px;
+  background: #fff;
+  font-size: 0.85rem;
+  color: #333;
+}
+
+.signal-slider {
+  -webkit-appearance: none;
+  appearance: none;
+  width: 100%;
+  height: 6px;
+  border-radius: 3px;
+  background: #E0E0E0;
+  outline: none;
+}
+
+.signal-slider::-webkit-slider-thumb {
+  -webkit-appearance: none;
+  appearance: none;
+  width: 16px;
+  height: 16px;
+  border-radius: 50%;
+  background: #4E79A7;
+  cursor: pointer;
+  box-shadow: 0 1px 3px rgba(0, 0, 0, 0.2);
+}
+
+.signal-slider::-moz-range-thumb {
+  width: 16px;
+  height: 16px;
+  border-radius: 50%;
+  background: #4E79A7;
+  cursor: pointer;
+  border: none;
+}
+
+.signal-weights {
+  margin-top: 16px;
+  padding: 12px 16px;
+  background: #F8F8FA;
+  border-radius: 8px;
+  border: 1px solid #E8E8EC;
+}
+
+.signal-weights h4 {
+  margin: 0 0 10px;
+  font-size: 0.85rem;
+  color: #555;
+}
+
+.signal-weights-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(160px, 1fr));
+  gap: 8px;
+}
+
+.signal-weight-item label {
+  font-size: 0.8rem;
+  font-weight: 500;
+  color: #555;
+}
+
+/* Signal Badge */
+.signal-badge {
+  text-align: center;
+  padding: 1.5rem;
+}
+
+.signal-badge-label {
+  font-size: 2rem;
+  font-weight: 800;
+  letter-spacing: 1px;
+  margin-bottom: 4px;
+}
+
+.signal-badge-score {
+  font-size: 0.95rem;
+  color: #666;
+  margin-top: 4px;
+}
+
+.signal-badge-confidence {
+  font-size: 0.85rem;
+  color: #888;
+  margin-top: 2px;
+}
+
+.signal-strong-buy .signal-badge-label {
+  color: #1B7A2D;
+}
+
+.signal-buy .signal-badge-label {
+  color: #59A14F;
+}
+
+.signal-neutral .signal-badge-label {
+  color: #777;
+}
+
+.signal-sell .signal-badge-label {
+  color: #D65F5F;
+}
+
+.signal-strong-sell .signal-badge-label {
+  color: #B40426;
+}
+
+#signalBadgeCard {
+  border-top: 4px solid #4E79A7;
+}
+
+#signalBadgeCard.card-strong-buy {
+  border-top-color: #1B7A2D;
+  background: linear-gradient(180deg, rgba(27, 122, 45, 0.06) 0%, #fff 40%);
+}
+
+#signalBadgeCard.card-buy {
+  border-top-color: #59A14F;
+  background: linear-gradient(180deg, rgba(89, 161, 79, 0.06) 0%, #fff 40%);
+}
+
+#signalBadgeCard.card-neutral {
+  border-top-color: #999;
+}
+
+#signalBadgeCard.card-sell {
+  border-top-color: #D65F5F;
+  background: linear-gradient(180deg, rgba(214, 95, 95, 0.06) 0%, #fff 40%);
+}
+
+#signalBadgeCard.card-strong-sell {
+  border-top-color: #B40426;
+  background: linear-gradient(180deg, rgba(180, 4, 38, 0.06) 0%, #fff 40%);
+}
+
+/* Indicator Breakdown */
+.signal-indicators-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(280px, 1fr));
+  gap: 12px;
+}
+
+.signal-indicator-card {
+  padding: 14px 16px;
+  border-radius: 8px;
+  background: #FAFBFC;
+  border: 1px solid #E8ECF0;
+}
+
+.signal-indicator-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  margin-bottom: 6px;
+}
+
+.signal-indicator-name {
+  font-weight: 700;
+  font-size: 0.9rem;
+  color: #333;
+}
+
+.signal-indicator-score {
+  font-weight: 700;
+  font-size: 0.85rem;
+  padding: 2px 8px;
+  border-radius: 4px;
+}
+
+.score-bullish {
+  color: #1B7A2D;
+  background: rgba(89, 161, 79, 0.12);
+}
+
+.score-bearish {
+  color: #B40426;
+  background: rgba(225, 87, 89, 0.12);
+}
+
+.score-neutral {
+  color: #777;
+  background: rgba(150, 150, 150, 0.1);
+}
+
+.signal-indicator-detail {
+  font-size: 0.82rem;
+  color: #666;
+  line-height: 1.4;
+}
+
+.signal-indicator-weight {
+  font-size: 0.75rem;
+  color: #999;
+  margin-top: 4px;
+}
+
+/* Score bar (visual gauge) */
+.signal-score-bar {
+  height: 5px;
+  background: #E8E8E8;
+  border-radius: 3px;
+  margin-top: 8px;
+  overflow: hidden;
+  position: relative;
+}
+
+.signal-score-fill {
+  height: 100%;
+  border-radius: 3px;
+  position: absolute;
+  top: 0;
+  transition: width 0.4s ease;
+}
+
+.signal-score-fill.positive {
+  left: 50%;
+  background: #59A14F;
+}
+
+.signal-score-fill.negative {
+  right: 50%;
+  background: #E15759;
+}
+
+/* Signal Log */
+.signal-log {
+  max-height: 250px;
+  overflow-y: auto;
+}
+
+.signal-log-empty {
+  padding: 1rem;
+  text-align: center;
+  color: #999;
+  font-size: 0.9rem;
+}
+
+.signal-log-item {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  padding: 8px 12px;
+  border-bottom: 1px solid #F0F0F0;
+  font-size: 0.85rem;
+}
+
+.signal-log-item:last-child {
+  border-bottom: none;
+}
+
+.signal-log-type {
+  font-weight: 700;
+  font-size: 0.8rem;
+  padding: 2px 8px;
+  border-radius: 4px;
+  min-width: 70px;
+  text-align: center;
+}
+
+.log-golden {
+  color: #1B7A2D;
+  background: rgba(89, 161, 79, 0.12);
+}
+
+.log-death {
+  color: #B40426;
+  background: rgba(225, 87, 89, 0.12);
+}
+
+.signal-log-date {
+  color: #888;
+  font-size: 0.8rem;
+  min-width: 80px;
+}
+
+.signal-log-price {
+  color: #333;
+  font-weight: 500;
+}
+
+@media (max-width: 768px) {
+  .signal-controls-grid {
+    grid-template-columns: 1fr;
+  }
+
+  .signal-weights-grid {
+    grid-template-columns: 1fr;
+  }
+
+  .signal-indicators-grid {
+    grid-template-columns: 1fr;
+  }
+}

@@ -5,12 +5,13 @@ import './index.css';
 import { loadIndex, loadStockData, loadNewsData, getChain, getExpiries, getDates, getSettlementHistory, getOIHistory } from './data.js';
 import { greeks, impliedVolatility, daysToExpiry } from './blackscholes.js';
 import { STRATEGIES, calculatePayoff, strategyMetrics, strategyGreeks } from './strategies.js';
-import { renderMarketChart, renderPayoffChart, renderSettlementChart, renderOIChart, renderPCRChart, renderVolumeChart, renderPredictionChart, renderCandlestickChart, renderSarimaxChart, renderHybridChart } from './charts.js';
+import { renderMarketChart, renderPayoffChart, renderSettlementChart, renderOIChart, renderPCRChart, renderVolumeChart, renderPredictionChart, renderCandlestickChart, renderSarimaxChart, renderHybridChart, renderSignalChart } from './charts.js';
 import { trainAndPredict } from './lstm.js';
 import { analyzeSentiment, combinedSignal } from './sentiment.js';
 import { buildOHLC, detectPatterns, backtestPatterns } from './candlestick.js';
 import { loadPriceData, runFullPipeline } from './sarimax.js';
 import { runHybridPipeline } from './hybrid.js';
+import { generateSignals } from './signals.js';
 
 // ============ State ============
 let state = {
@@ -82,6 +83,28 @@ async function init() {
 
   // Candlestick scan patterns button  
   document.getElementById('btnScanPatterns').addEventListener('click', onScanPatterns);
+
+  // Day Trading Signals — slider value displays
+  const sigSliders = [
+    { id: 'sigShortMA', valId: 'sigShortMAVal' },
+    { id: 'sigLongMA', valId: 'sigLongMAVal' },
+    { id: 'sigRSIPeriod', valId: 'sigRSIPeriodVal' },
+    { id: 'sigVolSpike', valId: 'sigVolSpikeVal' },
+    { id: 'sigLookback', valId: 'sigLookbackVal' },
+    { id: 'sigWMA', valId: 'sigWMAVal' },
+    { id: 'sigWVol', valId: 'sigWVolVal' },
+    { id: 'sigWCandle', valId: 'sigWCandleVal' },
+    { id: 'sigWNews', valId: 'sigWNewsVal' },
+    { id: 'sigWRSI', valId: 'sigWRSIVal' },
+  ];
+  sigSliders.forEach(({ id, valId }) => {
+    const slider = document.getElementById(id);
+    const valEl = document.getElementById(valId);
+    if (slider && valEl) {
+      slider.addEventListener('input', () => { valEl.textContent = slider.value; });
+    }
+  });
+  document.getElementById('btnGenerateSignals').addEventListener('click', onGenerateSignals);
 
   // Render dashboard
   renderDashboard();
@@ -1026,6 +1049,123 @@ async function onRunHybrid() {
   } finally {
     btn.disabled = false;
     btn.innerHTML = '⚡ Run Hybrid Model';
+  }
+}
+
+// ============ Day Trading Signals ============
+async function onGenerateSignals() {
+  const btn = document.getElementById('btnGenerateSignals');
+  btn.disabled = true;
+  btn.innerHTML = '⏳ Analyzing...';
+
+  try {
+    // 1. Load price data
+    const priceData = await loadPriceData(state.currentStock);
+    if (!priceData || !priceData.prices || priceData.prices.length < 10) {
+      document.getElementById('signalOutput').style.display = 'block';
+      document.getElementById('signalBadge').innerHTML = '<p class="placeholder-text">No price data available for this stock</p>';
+      return;
+    }
+
+    // 2. Read config from sliders
+    const lookback = parseInt(document.getElementById('sigLookback').value) || 90;
+    const prices = priceData.prices.slice(-lookback);
+
+    const config = {
+      maType: document.getElementById('sigMAType').value,
+      shortMAPeriod: parseInt(document.getElementById('sigShortMA').value) || 10,
+      longMAPeriod: parseInt(document.getElementById('sigLongMA').value) || 30,
+      rsiPeriod: parseInt(document.getElementById('sigRSIPeriod').value) || 14,
+      volumeSpikeThreshold: parseFloat(document.getElementById('sigVolSpike').value) || 1.5,
+      weights: {
+        ma: parseInt(document.getElementById('sigWMA').value) || 0,
+        volume: parseInt(document.getElementById('sigWVol').value) || 0,
+        candle: parseInt(document.getElementById('sigWCandle').value) || 0,
+        news: parseInt(document.getElementById('sigWNews').value) || 0,
+        rsi: parseInt(document.getElementById('sigWRSI').value) || 0,
+      },
+    };
+
+    // 3. Load news data for sentiment
+    const newsData = await loadNewsData(state.currentStock);
+    const sentimentResult = analyzeSentiment(newsData ? newsData.articles || [] : []);
+
+    // 4. Generate signals
+    const result = generateSignals(prices, sentimentResult, config);
+
+    // 5. Render output
+    document.getElementById('signalOutput').style.display = 'block';
+
+    // Badge
+    const badgeCard = document.getElementById('signalBadgeCard');
+    badgeCard.className = 'card card-' + result.composite.signal.replace('_', '-');
+    document.getElementById('signalBadge').innerHTML = `
+      <div class="${result.composite.cssClass}">
+        <div class="signal-badge-label">${result.composite.label}</div>
+        <div class="signal-badge-score">Composite Score: ${result.composite.score.toFixed(3)}</div>
+        <div class="signal-badge-confidence">Confidence: ${result.composite.confidence}% — ${prices.length} trading days analyzed</div>
+      </div>
+    `;
+
+    // Chart
+    renderSignalChart('signalChartCanvas', result);
+
+    // Indicator breakdown
+    const indEl = document.getElementById('signalIndicators');
+    const indicatorMeta = [
+      { key: 'ma', icon: '📊', name: 'Moving Average Crossover' },
+      { key: 'volume', icon: '📦', name: 'Volume Analysis' },
+      { key: 'candle', icon: '🕯️', name: 'Candlestick Patterns' },
+      { key: 'news', icon: '📰', name: 'News Sentiment' },
+      { key: 'rsi', icon: '📈', name: 'RSI' },
+    ];
+    indEl.innerHTML = indicatorMeta.map(({ key, icon, name }) => {
+      const ind = result.indicators[key];
+      const scoreClass = ind.score > 0.15 ? 'score-bullish' : ind.score < -0.15 ? 'score-bearish' : 'score-neutral';
+      const scoreLabel = ind.score > 0.15 ? 'BULLISH' : ind.score < -0.15 ? 'BEARISH' : 'NEUTRAL';
+      const barWidth = Math.min(Math.abs(ind.score) * 50, 50);
+      const barClass = ind.score >= 0 ? 'positive' : 'negative';
+      return `
+        <div class="signal-indicator-card">
+          <div class="signal-indicator-header">
+            <span class="signal-indicator-name">${icon} ${name}</span>
+            <span class="signal-indicator-score ${scoreClass}">${scoreLabel} (${ind.score.toFixed(2)})</span>
+          </div>
+          <div class="signal-indicator-detail">${ind.detail}</div>
+          <div class="signal-indicator-weight">Weight: ${ind.weight}%</div>
+          <div class="signal-score-bar">
+            <div class="signal-score-fill ${barClass}" style="width:${barWidth}%"></div>
+          </div>
+        </div>
+      `;
+    }).join('');
+
+    // Signal log (crossovers)
+    const logEl = document.getElementById('signalLog');
+    const crossovers = result.indicators.ma.crossovers || [];
+    if (crossovers.length === 0) {
+      logEl.innerHTML = '<div class="signal-log-empty">No MA crossover signals detected in the lookback period</div>';
+    } else {
+      logEl.innerHTML = crossovers.slice().reverse().map(c => {
+        const isGolden = c.type === 'golden_cross';
+        const d = result.ohlc[c.index];
+        return `
+          <div class="signal-log-item">
+            <span class="signal-log-type ${isGolden ? 'log-golden' : 'log-death'}">${isGolden ? '🟡 Golden' : '💀 Death'}</span>
+            <span class="signal-log-date">${d ? d.date : '—'}</span>
+            <span class="signal-log-price">${d ? 'HKD ' + d.close.toFixed(1) : ''}</span>
+          </div>
+        `;
+      }).join('');
+    }
+
+  } catch (err) {
+    console.error('Signal generation error:', err);
+    document.getElementById('signalOutput').style.display = 'block';
+    document.getElementById('signalBadge').innerHTML = `<p class="placeholder-text">Error: ${err.message}</p>`;
+  } finally {
+    btn.disabled = false;
+    btn.innerHTML = '🔍 Generate Signals';
   }
 }
 

@@ -87,6 +87,9 @@
           <button class="sub-tab" data-subtab="sub-candlestick">
             <span class="sub-tab-icon">🕯️</span> Candlestick
           </button>
+          <button class="sub-tab" data-subtab="sub-signals">
+            <span class="sub-tab-icon">📡</span> Day Trading Signals
+          </button>
         </nav>
 
         <!-- Sub-Panel: SARIMAX -->
@@ -405,6 +408,140 @@
                   </p>
                   <p>• Backtest win rates are based on a simple 3-day hold strategy</p>
                 </div>
+              </div>
+            </div>
+          </details>
+        </div>
+
+        <!-- Sub-Panel: Day Trading Signals -->
+        <div class="sub-panel" id="sub-signals">
+          <div class="card">
+            <h2>📡 Day Trading Signals</h2>
+            <p class="card-subtitle">Multi-indicator composite signal combining Moving Average crossovers, Volume
+              analysis, Candlestick patterns, News sentiment, and RSI — using real stock price data from Yahoo Finance
+            </p>
+
+            <!-- Control Panel -->
+            <div class="signal-controls">
+              <div class="signal-controls-grid">
+                <!-- MA Settings -->
+                <div class="signal-control-group">
+                  <label class="signal-label">MA Type</label>
+                  <select id="sigMAType" class="signal-select">
+                    <option value="SMA" selected>SMA</option>
+                    <option value="EMA">EMA</option>
+                  </select>
+                </div>
+                <div class="signal-control-group">
+                  <label class="signal-label">Short MA: <span id="sigShortMAVal">10</span></label>
+                  <input type="range" id="sigShortMA" min="3" max="50" value="10" class="signal-slider">
+                </div>
+                <div class="signal-control-group">
+                  <label class="signal-label">Long MA: <span id="sigLongMAVal">30</span></label>
+                  <input type="range" id="sigLongMA" min="10" max="100" value="30" class="signal-slider">
+                </div>
+                <div class="signal-control-group">
+                  <label class="signal-label">RSI Period: <span id="sigRSIPeriodVal">14</span></label>
+                  <input type="range" id="sigRSIPeriod" min="5" max="30" value="14" class="signal-slider">
+                </div>
+                <div class="signal-control-group">
+                  <label class="signal-label">Volume Spike: <span id="sigVolSpikeVal">1.5</span>×</label>
+                  <input type="range" id="sigVolSpike" min="1.2" max="3.0" step="0.1" value="1.5" class="signal-slider">
+                </div>
+                <div class="signal-control-group">
+                  <label class="signal-label">Lookback: <span id="sigLookbackVal">90</span> days</label>
+                  <input type="range" id="sigLookback" min="30" max="180" step="10" value="90" class="signal-slider">
+                </div>
+              </div>
+
+              <!-- Weight Controls -->
+              <div class="signal-weights">
+                <h4>Signal Weights (auto-normalized to 100%)</h4>
+                <div class="signal-weights-grid">
+                  <div class="signal-weight-item">
+                    <label>📊 MA: <span id="sigWMAVal">25</span>%</label>
+                    <input type="range" id="sigWMA" min="0" max="100" value="25" class="signal-slider">
+                  </div>
+                  <div class="signal-weight-item">
+                    <label>📦 Volume: <span id="sigWVolVal">20</span>%</label>
+                    <input type="range" id="sigWVol" min="0" max="100" value="20" class="signal-slider">
+                  </div>
+                  <div class="signal-weight-item">
+                    <label>🕯️ Candle: <span id="sigWCandleVal">20</span>%</label>
+                    <input type="range" id="sigWCandle" min="0" max="100" value="20" class="signal-slider">
+                  </div>
+                  <div class="signal-weight-item">
+                    <label>📰 News: <span id="sigWNewsVal">15</span>%</label>
+                    <input type="range" id="sigWNews" min="0" max="100" value="15" class="signal-slider">
+                  </div>
+                  <div class="signal-weight-item">
+                    <label>📈 RSI: <span id="sigWRSIVal">20</span>%</label>
+                    <input type="range" id="sigWRSI" min="0" max="100" value="20" class="signal-slider">
+                  </div>
+                </div>
+              </div>
+
+              <button id="btnGenerateSignals" class="btn btn-primary btn-accent" style="margin-top:12px">
+                🔍 Generate Signals
+              </button>
+            </div>
+          </div>
+
+          <!-- Signal Output -->
+          <div id="signalOutput" style="display:none">
+            <!-- Composite Signal Badge -->
+            <div class="card" id="signalBadgeCard">
+              <div id="signalBadge" class="signal-badge"></div>
+            </div>
+
+            <!-- Chart -->
+            <div class="card">
+              <h3>Price Chart with Moving Averages &amp; Volume</h3>
+              <div class="chart-container" style="height:450px">
+                <canvas id="signalChartCanvas"></canvas>
+              </div>
+            </div>
+
+            <!-- Indicator Breakdown -->
+            <div class="card">
+              <h3>Indicator Breakdown</h3>
+              <div id="signalIndicators" class="signal-indicators-grid"></div>
+            </div>
+
+            <!-- Signal Log -->
+            <div class="card">
+              <h3>Recent Crossover Signals</h3>
+              <div id="signalLog" class="signal-log"></div>
+            </div>
+          </div>
+
+          <!-- Educational Content -->
+          <details class="edu-section">
+            <summary>📘 How Day Trading Signals Work</summary>
+            <div class="edu-content">
+              <div class="edu-block">
+                <h4>Moving Average Crossover</h4>
+                <p>When the short-period MA crosses above the long-period MA (Golden Cross), it signals bullish
+                  momentum. The opposite (Death Cross) signals bearish momentum. SMA weights all periods equally; EMA
+                  gives more weight to recent prices.</p>
+                <div class="edu-formula">SMA(n) = (P₁ + P₂ + ... + Pₙ) / n<br>EMA = Price × k + EMA_prev × (1 − k),
+                  where k = 2/(n+1)</div>
+              </div>
+              <div class="edu-block">
+                <h4>Volume Analysis</h4>
+                <p>Volume confirms price moves. Rising price on high volume = strong conviction. Rising price on low
+                  volume = potential weakness. Volume spikes often precede reversals or breakouts.</p>
+              </div>
+              <div class="edu-block">
+                <h4>RSI (Relative Strength Index)</h4>
+                <p>RSI measures speed and magnitude of price changes on a 0–100 scale. RSI above 70 = overbought (may
+                  reverse down). RSI below 30 = oversold (may bounce up).</p>
+                <div class="edu-formula">RSI = 100 − 100/(1 + RS)<br>RS = Avg Gain / Avg Loss over N periods</div>
+              </div>
+              <div class="edu-block">
+                <h4>Composite Signal</h4>
+                <p>Each indicator produces a score from −1 (bearish) to +1 (bullish). The composite signal is a weighted
+                  average of all indicators. Adjust the weights to emphasize the indicators you trust most.</p>
               </div>
             </div>
           </details>

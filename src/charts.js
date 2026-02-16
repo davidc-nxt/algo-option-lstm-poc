@@ -881,3 +881,207 @@ export function renderHybridChart(canvasId, result) {
     });
 }
 
+
+// ============ Day Trading Signal Chart (Candlestick + MA + Volume) ============
+
+const signalChartInstances = {};
+
+export function renderSignalChart(canvasId, signalResult) {
+    if (signalChartInstances[canvasId]) {
+        signalChartInstances[canvasId].destroy();
+        delete signalChartInstances[canvasId];
+    }
+
+    const canvas = document.getElementById(canvasId);
+    if (!canvas) return;
+    const ctx = canvas.getContext('2d');
+
+    const { ohlc, indicators, priceData } = signalResult;
+    const { shortMA, longMA, crossovers } = indicators.ma;
+
+    const dates = ohlc.map(d => d.date);
+    const volumes = priceData.map(d => d.volume);
+    const maxVolume = Math.max(...volumes);
+
+    // Candlestick data: bar chart with floating bars [low, high] colored by direction
+    const candleColors = ohlc.map(c => c.close >= c.open ? '#4E79A7' : '#E15759');
+    const candleBorderColors = candleColors;
+
+    // OHLC bars: use floating bars [open, close] for the body
+    const candleBodies = ohlc.map(c => [Math.min(c.open, c.close), Math.max(c.open, c.close)]);
+
+    // Wick plugin: draw high/low lines
+    const wickPlugin = {
+        id: 'candleWicks',
+        afterDatasetsDraw(chart) {
+            const meta = chart.getDatasetMeta(0);
+            if (!meta || meta.hidden) return;
+            const ctx2 = chart.ctx;
+            ctx2.save();
+            meta.data.forEach((bar, i) => {
+                if (!ohlc[i]) return;
+                const x = bar.x;
+                const yScale = chart.scales.y;
+                const yHigh = yScale.getPixelForValue(ohlc[i].high);
+                const yLow = yScale.getPixelForValue(ohlc[i].low);
+                ctx2.beginPath();
+                ctx2.strokeStyle = candleColors[i];
+                ctx2.lineWidth = 1.5;
+                ctx2.moveTo(x, yHigh);
+                ctx2.lineTo(x, yLow);
+                ctx2.stroke();
+            });
+            ctx2.restore();
+        }
+    };
+
+    // Crossover markers plugin
+    const crossoverPlugin = {
+        id: 'crossoverMarkers',
+        afterDatasetsDraw(chart) {
+            if (!crossovers || crossovers.length === 0) return;
+            const ctx2 = chart.ctx;
+            const xScale = chart.scales.x;
+            const yScale = chart.scales.y;
+            ctx2.save();
+            for (const c of crossovers) {
+                const x = xScale.getPixelForValue(c.index);
+                const price = ohlc[c.index] ? ohlc[c.index].close : 0;
+                const y = yScale.getPixelForValue(price);
+
+                // Draw triangle marker
+                const isGolden = c.type === 'golden_cross';
+                ctx2.fillStyle = isGolden ? '#59A14F' : '#E15759';
+                ctx2.beginPath();
+                if (isGolden) {
+                    // Up triangle
+                    ctx2.moveTo(x, y - 14);
+                    ctx2.lineTo(x - 7, y);
+                    ctx2.lineTo(x + 7, y);
+                } else {
+                    // Down triangle
+                    ctx2.moveTo(x, y + 14);
+                    ctx2.lineTo(x - 7, y);
+                    ctx2.lineTo(x + 7, y);
+                }
+                ctx2.closePath();
+                ctx2.fill();
+            }
+            ctx2.restore();
+        }
+    };
+
+    const datasets = [
+        {
+            label: 'OHLC',
+            data: candleBodies,
+            backgroundColor: candleColors,
+            borderColor: candleBorderColors,
+            borderWidth: 1,
+            borderSkipped: false,
+            barPercentage: 0.6,
+            categoryPercentage: 0.9,
+            yAxisID: 'y',
+            order: 2,
+        },
+        {
+            label: `Short MA (${signalResult.config.shortMAPeriod})`,
+            data: shortMA,
+            type: 'line',
+            borderColor: '#E8900C',
+            backgroundColor: 'transparent',
+            borderWidth: 2,
+            pointRadius: 0,
+            tension: 0.3,
+            yAxisID: 'y',
+            order: 1,
+        },
+        {
+            label: `Long MA (${signalResult.config.longMAPeriod})`,
+            data: longMA,
+            type: 'line',
+            borderColor: '#4E79A7',
+            backgroundColor: 'transparent',
+            borderWidth: 2,
+            pointRadius: 0,
+            tension: 0.3,
+            yAxisID: 'y',
+            order: 1,
+        },
+        {
+            label: 'Volume',
+            data: volumes,
+            type: 'bar',
+            backgroundColor: ohlc.map((c, i) =>
+                c.close >= c.open ? 'rgba(78, 121, 167, 0.25)' : 'rgba(225, 87, 89, 0.25)'
+            ),
+            borderWidth: 0,
+            barPercentage: 0.8,
+            categoryPercentage: 0.95,
+            yAxisID: 'yVolume',
+            order: 3,
+        },
+    ];
+
+    signalChartInstances[canvasId] = new Chart(ctx, {
+        type: 'bar',
+        data: { labels: dates, datasets },
+        plugins: [wickPlugin, crossoverPlugin],
+        options: {
+            responsive: true,
+            maintainAspectRatio: false,
+            plugins: {
+                legend: {
+                    position: 'top',
+                    labels: {
+                        filter: item => item.text !== 'OHLC',
+                        color: '#333',
+                        font: { size: 11 },
+                    },
+                },
+                tooltip: {
+                    mode: 'index',
+                    intersect: false,
+                    callbacks: {
+                        label(ctx) {
+                            if (ctx.datasetIndex === 0 && ohlc[ctx.dataIndex]) {
+                                const c = ohlc[ctx.dataIndex];
+                                return `O: ${c.open} H: ${c.high} L: ${c.low} C: ${c.close}`;
+                            }
+                            if (ctx.datasetIndex === 3) {
+                                return `Volume: ${(ctx.raw / 1e6).toFixed(1)}M`;
+                            }
+                            if (ctx.raw !== null) {
+                                return `${ctx.dataset.label}: ${ctx.raw.toFixed(2)}`;
+                            }
+                            return '';
+                        }
+                    }
+                },
+            },
+            scales: {
+                x: {
+                    ticks: { maxTicksLimit: 15, maxRotation: 45, color: '#666', font: { size: 10 } },
+                    grid: { display: false },
+                },
+                y: {
+                    position: 'right',
+                    title: { display: true, text: 'Price (HKD)', color: '#333' },
+                    ticks: { color: '#666' },
+                    grid: { color: '#E5E5E5' },
+                },
+                yVolume: {
+                    position: 'left',
+                    title: { display: true, text: 'Volume', color: '#999' },
+                    ticks: {
+                        color: '#999',
+                        callback: v => v >= 1e6 ? `${(v / 1e6).toFixed(0)}M` : v >= 1e3 ? `${(v / 1e3).toFixed(0)}K` : v,
+                    },
+                    grid: { display: false },
+                    max: maxVolume * 3, // Volume takes bottom ~33%
+                },
+            },
+            interaction: { mode: 'index', axis: 'x', intersect: false },
+        },
+    });
+}
